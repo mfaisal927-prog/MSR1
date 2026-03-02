@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model DailyEntry {
+  id                   Int      @id @default(autoincrement())
+  date                 String   @unique
+  day_text             String?
+  month                Int      @default(0)
+  year                 Int      @default(0)
+  sale_total           Float
+  purchase_total       Float
+  expense_total        Float
+  profit_total         Float
+  extra_expense_total  Float    @default(0)
+  extra_expense_reason String?
+  createdAt            DateTime @default(now())
+}
+
+model MonthlySettings {
+  id                  Int     @id @default(autoincrement())
+  month               Int
+  year                Int
+  include_prev_profit Boolean @default(false)
+
+  @@unique([year, month])
+}
+
+model Store {
+  id        Int      @id @default(autoincrement())
+  name      String
+  location  String?
+  phone     String?
+  notes     String?
+  is_active Boolean  @default(true)
+  purchases PurchaseLine[]
+  createdAt DateTime @default(now())
+}
+
+model Item {
+  id           Int      @id @default(autoincrement())
+  name         String
+  category     String?
+  image_url    String?
+  default_unit String?
+  is_active    Boolean  @default(true)
+  purchases    PurchaseLine[]
+  createdAt    DateTime @default(now())
+}
+
+model PurchaseEntry {
+  id        Int      @id @default(autoincrement())
+  date      String   @unique
+  notes     String?
+  lines     PurchaseLine[]
+  createdAt DateTime @default(now())
+}
+
+model PurchaseLine {
+  id             Int           @id @default(autoincrement())
+  purchaseEntryId Int
+  itemId         Int
+  storeId        Int
+  quantity       Float
+  unit           String
+  unit_price     Float
+  total_price    Float
+  item_image_url String?
+  quantity_in_base_unit    Float?
+  unit_price_per_base_unit Float?
+  
+  entry          PurchaseEntry @relation(fields: [purchaseEntryId], references: [id], onDelete: Cascade)
+  item           Item          @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  store          Store         @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  createdAt      DateTime      @default(now())
+}
