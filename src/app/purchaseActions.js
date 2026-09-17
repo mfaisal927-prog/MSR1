@@ -263,8 +263,8 @@ export async function addPurchaseEntry(date, notes, lines) {
                 let q_in_base = parseFloat(line.quantity);
 
                 // Normalization rules
-                const lUnit = line.unit.toLowerCase();
-                const bUnit = baseUnit.toLowerCase();
+                const lUnit = (line.unit || '').toLowerCase();
+                const bUnit = (baseUnit || '').toLowerCase();
 
                 if ((lUnit === 'gram' || lUnit === 'g') && bUnit === 'kg') {
                     q_in_base = q_in_base / 1000.0;

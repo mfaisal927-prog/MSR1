@@ -6,11 +6,11 @@ import { updateEntry } from "../../../actions";
 export default function EditClient({ entry }) {
     const router = useRouter();
 
-    const [date, setDate] = useState(entry.date);
-    const [sales, setSales] = useState(entry.sale_total);
-    const [purchases, setPurchases] = useState(entry.purchase_total);
-    const [expenses, setExpenses] = useState(entry.expense_total);
-    const [profit, setProfit] = useState(entry.profit_total);
+    const [date, setDate] = useState(entry?.date || "");
+    const [sales, setSales] = useState(entry?.sale_total || 0);
+    const [purchases, setPurchases] = useState(entry?.purchase_total || 0);
+    const [expenses, setExpenses] = useState(entry?.expense_total || 0);
+    const [profit, setProfit] = useState(entry?.profit_total || 0);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);

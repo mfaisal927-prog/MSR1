@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Menu, X, Moon, Sun, LayoutDashboard, CalendarDays, List, BarChart3, Settings, LogOut, ChevronRight, ChevronLeft, CalendarSearch, PieChart, ShoppingCart } from 'lucide-react';
 import Link from 'next/link';
+import { logoutUser } from './actions';
 
 export default function ClientLayout({ children }) {
     const [theme, setTheme] = useState('light');
@@ -12,6 +13,7 @@ export default function ClientLayout({ children }) {
 
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
     const pathname = usePathname();
     const router = useRouter();
 
@@ -64,6 +66,13 @@ export default function ClientLayout({ children }) {
         setTheme(newTheme);
         localStorage.setItem('theme', newTheme);
         document.documentElement.setAttribute('data-theme', newTheme);
+    };
+
+    const handleLogout = async () => {
+        setIsLoggingOut(true);
+        await logoutUser();
+        router.replace('/');
+        router.refresh();
     };
 
     // Close sidebar on route change (for mobile)
@@ -158,6 +167,16 @@ export default function ClientLayout({ children }) {
                     <div className="nav-group mobile-only" style={{ padding: '0 12px', marginTop: '10px' }}>
                         <div className="nav-group-title">{language === 'ur' ? 'ہیڈر سیٹنگز' : 'Header Settings'}</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <button className="saas-lang-btn" style={{ flex: 1, justifyContent: 'center' }} onClick={() => handleLanguageChange(language === 'ur' ? 'en' : 'ur')} title={language === 'ur' ? 'Switch to English' : 'اردو میں تبدیل کریں'}>
+                                    {language === 'ur' ? 'English' : 'اردو'}
+                                </button>
+
+                                <button className="saas-icon-btn" style={{ border: '1px solid var(--border)', borderRadius: '20px', width: 'auto', padding: '6px 14px', flex: 1, justifyContent: 'center' }} onClick={toggleTheme} title={language === 'ur' ? 'ڈارک موڈ' : 'Dark Mode'}>
+                                    {theme === 'light' ? <><Moon size={16} className="me-2" style={{ marginRight: language === 'ur' ? 0 : '8px', marginLeft: language === 'ur' ? '8px' : 0 }} /><span>Dark View</span></> : <><Sun size={16} className="me-2" style={{ marginRight: language === 'ur' ? 0 : '8px', marginLeft: language === 'ur' ? '8px' : 0 }} /><span>Light View</span></>}
+                                </button>
+                            </div>
+
                             <select className="saas-select" style={language === 'ur' ? { width: '100%', padding: '8px 14px 8px 30px', backgroundPosition: 'left 10px center' } : { width: '100%' }} value={fontSize} onChange={(e) => handleFontSizeChange(e.target.value)}>
                                 <option value="small">{language === 'ur' ? 'فونٹ: چھوٹا' : 'Font: Small'}</option>
                                 <option value="medium">{language === 'ur' ? 'فونٹ: درمیانہ' : 'Font: Medium'}</option>
@@ -183,9 +202,9 @@ export default function ClientLayout({ children }) {
                 </nav>
 
                 <div className="sidebar-footer">
-                    <button onClick={() => router.push('/')} className="sidebar-link logout-btn" title={isCollapsed ? (language === 'ur' ? 'لاگ آؤٹ' : 'Logout') : ''}>
+                    <button onClick={handleLogout} className="sidebar-link logout-btn" title={isCollapsed ? (language === 'ur' ? 'لاگ آؤٹ' : 'Logout') : ''} disabled={isLoggingOut}>
                         <LogOut size={20} />
-                        {!isCollapsed && <span>{language === 'ur' ? 'لاگ آؤٹ' : 'Logout'}</span>}
+                        {!isCollapsed && <span>{isLoggingOut ? (language === 'ur' ? 'لاگ آؤٹ...' : 'Logging out...') : (language === 'ur' ? 'لاگ آؤٹ' : 'Logout')}</span>}
                     </button>
                 </div>
             </aside>
@@ -250,11 +269,11 @@ export default function ClientLayout({ children }) {
                                 </select>
                             </div>
 
-                            <button className="saas-lang-btn" onClick={() => handleLanguageChange(language === 'ur' ? 'en' : 'ur')} title={language === 'ur' ? 'Switch to English' : 'اردو میں تبدیل کریں'}>
+                            <button className="saas-lang-btn desktop-only" onClick={() => handleLanguageChange(language === 'ur' ? 'en' : 'ur')} title={language === 'ur' ? 'Switch to English' : 'اردو میں تبدیل کریں'}>
                                 {language === 'ur' ? 'English' : 'اردو'}
                             </button>
 
-                            <button className="saas-icon-btn" onClick={toggleTheme} title={language === 'ur' ? 'ڈارک موڈ' : 'Dark Mode'}>
+                            <button className="saas-icon-btn desktop-only" onClick={toggleTheme} title={language === 'ur' ? 'ڈارک موڈ' : 'Dark Mode'}>
                                 {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
                             </button>
                         </div>
@@ -666,6 +685,7 @@ export default function ClientLayout({ children }) {
                         bottom: 0;
                         right: 0;
                         transform: translateX(100%);
+                        z-index: 1000;
                     }
                     .app-layout.sidebar-open .sidebar {
                         transform: translateX(0);
@@ -681,7 +701,7 @@ export default function ClientLayout({ children }) {
                     position: fixed;
                     inset: 0;
                     background: rgba(0,0,0,0.5);
-                    z-index: 90;
+                    z-index: 999;
                     backdrop-filter: blur(2px);
                 }
                 @media (max-width: 768px) {

@@ -28,7 +28,7 @@ export default function ReportsClient({ entries }) {
         let expenses = 0;
         let profit = 0;
 
-        const filteredEntries = entries.filter((entry) => {
+        const filteredEntries = (entries || []).filter((entry) => {
             if (!selectedMonth) return true; // if no month is selected, show all time
 
             const entryDate = new Date(entry.date);

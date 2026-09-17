@@ -2,31 +2,116 @@
 
 import { prisma } from "../lib/prisma"
 import { revalidatePath } from "next/cache"
+import {
+    clearAuthCookie,
+    ensureAdminUser,
+    getCurrentUser,
+    hashPassword,
+    setAuthCookie,
+    verifyPassword,
+} from "../lib/auth"
 
-export async function createEntry(formData) {
-    const date = formData.get("date")
+export async function loginUser(formData) {
+    const username = String(formData.get("username") || "").trim();
+    const password = String(formData.get("password") || "");
 
-    // Check if an entry already exists for this date
-    const existing = await prisma.dailyEntry.findFirst({
-        where: { date }
-    })
-
-    if (existing) {
-        const formattedDate = new Date(date).toLocaleDateString('ur-PK');
-        return { success: false, error: `${formattedDate} کی انٹری پہلے سے موجود ہے` }
+    if (!username || !password) {
+        return { success: false, error: "یوزرنیم اور پاس ورڈ دونوں درج کریں۔" };
     }
 
+    try {
+        await ensureAdminUser();
+    } catch (error) {
+        console.error("Login setup error:", error);
+        return { success: false, error: "Login setup مکمل نہیں ہے۔ Vercel پر AUTH_SECRET اور ADMIN_PASSWORD ضرور set کریں۔" };
+    }
+
+    const user = await prisma.adminUser.findUnique({
+        where: { username },
+    });
+
+    if (!user || !verifyPassword(password, user.passwordHash)) {
+        return { success: false, error: "یوزرنیم یا پاس ورڈ درست نہیں ہے۔" };
+    }
+
+    await prisma.adminUser.update({
+        where: { id: user.id },
+        data: { lastLoginAt: new Date() },
+    });
+
+    try {
+        await setAuthCookie(user);
+    } catch (error) {
+        console.error("Session setup error:", error);
+        return { success: false, error: "Session setup مکمل نہیں ہے۔ AUTH_SECRET check کریں۔" };
+    }
+
+    return {
+        success: true,
+        user: {
+            id: user.id,
+            username: user.username,
+        },
+    };
+}
+
+export async function logoutUser() {
+    await clearAuthCookie();
+    return { success: true };
+}
+
+export async function changeAdminPassword(formData) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+        return { success: false, error: "براہِ کرم دوبارہ login کریں۔" };
+    }
+
+    const currentPassword = String(formData.get("currentPassword") || "");
+    const newPassword = String(formData.get("newPassword") || "");
+    const confirmPassword = String(formData.get("confirmPassword") || "");
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        return { success: false, error: "تمام password fields مکمل کریں۔" };
+    }
+
+    if (newPassword.length < 6) {
+        return { success: false, error: "نیا پاس ورڈ کم از کم 6 حروف کا ہونا چاہیے۔" };
+    }
+
+    if (newPassword !== confirmPassword) {
+        return { success: false, error: "نیا پاس ورڈ اور confirm password ایک جیسے نہیں ہیں۔" };
+    }
+
+    const user = await prisma.adminUser.findUnique({
+        where: { id: currentUser.id },
+    });
+
+    if (!user || !verifyPassword(currentPassword, user.passwordHash)) {
+        return { success: false, error: "موجودہ پاس ورڈ درست نہیں ہے۔" };
+    }
+
+    await prisma.adminUser.update({
+        where: { id: user.id },
+        data: { passwordHash: hashPassword(newPassword) },
+    });
+
+    return { success: true, message: "پاس ورڈ کامیابی سے تبدیل ہو گیا۔" };
+}
+
+function parseDailyEntryForm(formData) {
+    const date = formData.get("date")
     const sale_total = parseFloat(formData.get("sales")) || 0
     const purchase_total = parseFloat(formData.get("purchases")) || 0
     const expense_total = parseFloat(formData.get("expenses")) || 0
     const profit_total = sale_total - (purchase_total + expense_total)
 
-    // Parse year and month from date
     const [yearStr, monthStr] = date.split("-")
     const year = parseInt(yearStr, 10)
     const month = parseInt(monthStr, 10)
 
-    await prisma.dailyEntry.create({
+    return {
+        date,
+        monthStr,
         data: {
             date,
             month,
@@ -36,11 +121,59 @@ export async function createEntry(formData) {
             expense_total,
             profit_total,
         }
+    }
+}
+
+function serializeDailyEntry(entry) {
+    if (!entry) return null
+
+    return {
+        id: entry.id,
+        date: entry.date,
+        sale_total: entry.sale_total,
+        purchase_total: entry.purchase_total,
+        expense_total: entry.expense_total,
+        profit_total: entry.profit_total,
+        extra_expense_total: entry.extra_expense_total,
+        extra_expense_reason: entry.extra_expense_reason,
+    }
+}
+
+export async function createEntry(formData, overwriteExisting = false) {
+    const { date, monthStr, data } = parseDailyEntryForm(formData)
+
+    // Check if an entry already exists for this date
+    const existing = await prisma.dailyEntry.findFirst({
+        where: { date }
     })
+
+    if (existing && !overwriteExisting) {
+        const formattedDate = new Date(date).toLocaleDateString('ur-PK');
+        return {
+            success: false,
+            duplicate: true,
+            error: `${formattedDate} کی انٹری پہلے سے موجود ہے`,
+            existing: serializeDailyEntry(existing)
+        }
+    }
+
+    if (existing && overwriteExisting) {
+        await prisma.dailyEntry.update({
+            where: { id: existing.id },
+            data
+        })
+
+        revalidatePath("/records")
+        revalidatePath("/dashboard")
+        revalidatePath(`/monthly/${data.year}/${monthStr}`)
+        return { success: true, updated: true }
+    }
+
+    await prisma.dailyEntry.create({ data })
 
     revalidatePath("/records")
     revalidatePath("/dashboard")
-    revalidatePath(`/monthly/${year}/${monthStr}`)
+    revalidatePath(`/monthly/${data.year}/${monthStr}`)
     return { success: true }
 }
 
@@ -426,6 +559,236 @@ export async function updateMonthlySettings(year, month, include_prev_profit) {
     } catch (error) {
         console.error("Error updating monthly settings:", error);
         return { success: false, error: "ترتیبات محفوظ کرتے وقت خرابی پیدا ہو گئی۔" };
+    }
+}
+
+function serializeMonthlyExpense(expense) {
+    return {
+        id: expense.id,
+        year: expense.year,
+        month: expense.month,
+        title: expense.title,
+        amount: expense.amount,
+        notes: expense.notes,
+    }
+}
+
+function parseMonthlyExpenseForm(year, month, formData) {
+    const title = String(formData.get("title") || "").trim();
+    const amount = parseFloat(formData.get("amount"));
+    const notes = String(formData.get("notes") || "").trim();
+    const y = parseInt(year, 10);
+    const m = parseInt(month, 10);
+
+    if (!title) {
+        return { error: "خرچ کا نام لازمی درج کریں۔" };
+    }
+
+    if (Number.isNaN(amount) || amount < 0) {
+        return { error: "رقم درست نمبر میں درج کریں۔" };
+    }
+
+    return {
+        data: {
+            year: y,
+            month: m,
+            title,
+            amount,
+            notes: notes || null,
+        },
+        monthPath: `/monthly/${y}/${String(m).padStart(2, "0")}`,
+    };
+}
+
+export async function getMonthlyExpenses(year, month) {
+    try {
+        const expenses = await prisma.monthlyExpense.findMany({
+            where: {
+                year: parseInt(year, 10),
+                month: parseInt(month, 10),
+            },
+            orderBy: { id: "asc" },
+        });
+
+        return expenses.map(serializeMonthlyExpense);
+    } catch (error) {
+        console.error("Error fetching monthly expenses:", error);
+        return [];
+    }
+}
+
+export async function addMonthlyExpense(year, month, formData) {
+    try {
+        const parsed = parseMonthlyExpenseForm(year, month, formData);
+        if (parsed.error) return { success: false, error: parsed.error };
+
+        const expense = await prisma.monthlyExpense.create({
+            data: parsed.data,
+        });
+
+        revalidatePath("/monthly");
+        revalidatePath(parsed.monthPath);
+
+        return { success: true, expense: serializeMonthlyExpense(expense) };
+    } catch (error) {
+        console.error("Error adding monthly expense:", error);
+        return { success: false, error: "ماہانہ خرچ محفوظ کرتے وقت خرابی پیدا ہو گئی۔" };
+    }
+}
+
+export async function updateMonthlyExpense(id, year, month, formData) {
+    try {
+        const parsed = parseMonthlyExpenseForm(year, month, formData);
+        if (parsed.error) return { success: false, error: parsed.error };
+
+        const expense = await prisma.monthlyExpense.update({
+            where: { id: parseInt(id, 10) },
+            data: parsed.data,
+        });
+
+        revalidatePath("/monthly");
+        revalidatePath(parsed.monthPath);
+
+        return { success: true, expense: serializeMonthlyExpense(expense) };
+    } catch (error) {
+        console.error("Error updating monthly expense:", error);
+        return { success: false, error: "ماہانہ خرچ تبدیل کرتے وقت خرابی پیدا ہو گئی۔" };
+    }
+}
+
+export async function deleteMonthlyExpense(id, year, month) {
+    try {
+        const y = parseInt(year, 10);
+        const m = parseInt(month, 10);
+
+        await prisma.monthlyExpense.delete({
+            where: { id: parseInt(id, 10) },
+        });
+
+        revalidatePath("/monthly");
+        revalidatePath(`/monthly/${y}/${String(m).padStart(2, "0")}`);
+
+        return { success: true };
+    } catch (error) {
+        console.error("Error deleting monthly expense:", error);
+        return { success: false, error: "ماہانہ خرچ حذف کرتے وقت خرابی پیدا ہو گئی۔" };
+    }
+}
+
+function toPlainJson(value) {
+    return JSON.parse(JSON.stringify(value));
+}
+
+function ensureArray(value) {
+    return Array.isArray(value) ? value : [];
+}
+
+function withCreatedAt(row) {
+    if (!row?.createdAt) return row;
+    return { ...row, createdAt: new Date(row.createdAt) };
+}
+
+export async function exportBackupData() {
+    try {
+        const [
+            dailyEntries,
+            monthlySettings,
+            monthlyExpenses,
+            stores,
+            items,
+            purchaseEntries,
+            purchaseLines,
+        ] = await Promise.all([
+            prisma.dailyEntry.findMany({ orderBy: { id: "asc" } }),
+            prisma.monthlySettings.findMany({ orderBy: { id: "asc" } }),
+            prisma.monthlyExpense.findMany({ orderBy: { id: "asc" } }),
+            prisma.store.findMany({ orderBy: { id: "asc" } }),
+            prisma.item.findMany({ orderBy: { id: "asc" } }),
+            prisma.purchaseEntry.findMany({ orderBy: { id: "asc" } }),
+            prisma.purchaseLine.findMany({ orderBy: { id: "asc" } }),
+        ]);
+
+        const backup = {
+            app: "malik-sajawal-refreshment",
+            version: 1,
+            exportedAt: new Date().toISOString(),
+            data: {
+                dailyEntries,
+                monthlySettings,
+                monthlyExpenses,
+                stores,
+                items,
+                purchaseEntries,
+                purchaseLines,
+            },
+        };
+
+        return { success: true, backup: toPlainJson(backup) };
+    } catch (error) {
+        console.error("Error exporting backup:", error);
+        return { success: false, error: "Backup بناتے وقت خرابی پیدا ہو گئی۔" };
+    }
+}
+
+export async function restoreBackupData(backup) {
+    try {
+        if (!backup || backup.app !== "malik-sajawal-refreshment" || !backup.data) {
+            return { success: false, error: "Backup file درست نہیں ہے۔" };
+        }
+
+        const data = backup.data;
+
+        const dailyEntries = ensureArray(data.dailyEntries).map(withCreatedAt);
+        const monthlySettings = ensureArray(data.monthlySettings);
+        const monthlyExpenses = ensureArray(data.monthlyExpenses).map(withCreatedAt);
+        const stores = ensureArray(data.stores).map(withCreatedAt);
+        const items = ensureArray(data.items).map(withCreatedAt);
+        const purchaseEntries = ensureArray(data.purchaseEntries).map(withCreatedAt);
+        const purchaseLines = ensureArray(data.purchaseLines).map(withCreatedAt);
+
+        await prisma.$transaction(async (tx) => {
+            await tx.purchaseLine.deleteMany();
+            await tx.purchaseEntry.deleteMany();
+            await tx.monthlyExpense.deleteMany();
+            await tx.monthlySettings.deleteMany();
+            await tx.dailyEntry.deleteMany();
+            await tx.store.deleteMany();
+            await tx.item.deleteMany();
+
+            if (dailyEntries.length > 0) await tx.dailyEntry.createMany({ data: dailyEntries });
+            if (monthlySettings.length > 0) await tx.monthlySettings.createMany({ data: monthlySettings });
+            if (monthlyExpenses.length > 0) await tx.monthlyExpense.createMany({ data: monthlyExpenses });
+            if (stores.length > 0) await tx.store.createMany({ data: stores });
+            if (items.length > 0) await tx.item.createMany({ data: items });
+            if (purchaseEntries.length > 0) await tx.purchaseEntry.createMany({ data: purchaseEntries });
+            if (purchaseLines.length > 0) await tx.purchaseLine.createMany({ data: purchaseLines });
+        });
+
+        revalidatePath("/");
+        revalidatePath("/dashboard");
+        revalidatePath("/monthly");
+        revalidatePath("/records");
+        revalidatePath("/reports");
+        revalidatePath("/purchases");
+        revalidatePath("/items");
+        revalidatePath("/stores");
+        revalidatePath("/price-compare");
+
+        return {
+            success: true,
+            counts: {
+                dailyEntries: dailyEntries.length,
+                monthlySettings: monthlySettings.length,
+                monthlyExpenses: monthlyExpenses.length,
+                stores: stores.length,
+                items: items.length,
+                purchaseEntries: purchaseEntries.length,
+                purchaseLines: purchaseLines.length,
+            },
+        };
+    } catch (error) {
+        console.error("Error restoring backup:", error);
+        return { success: false, error: "Backup restore کرتے وقت خرابی پیدا ہو گئی۔" };
     }
 }
 

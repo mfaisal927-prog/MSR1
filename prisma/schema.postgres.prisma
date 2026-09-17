@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model DailyEntry {
@@ -92,7 +92,7 @@ model PurchaseLine {
   item_image_url String?
   quantity_in_base_unit    Float?
   unit_price_per_base_unit Float?
-  
+
   entry          PurchaseEntry @relation(fields: [purchaseEntryId], references: [id], onDelete: Cascade)
   item           Item          @relation(fields: [itemId], references: [id], onDelete: Restrict)
   store          Store         @relation(fields: [storeId], references: [id], onDelete: Restrict)

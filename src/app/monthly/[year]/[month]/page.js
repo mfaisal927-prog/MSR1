@@ -1,5 +1,5 @@
 import MonthlyDashboardClient from "./MonthlyDashboardClient";
-import { getEntriesByMonth, getMonthlySettings } from "../../../actions";
+import { getEntriesByMonth, getMonthlyExpenses, getMonthlySettings } from "../../../actions";
 
 export const metadata = {
     title: "ماہانہ ڈیش بورڈ - Malik Sajawal Refreshment",
@@ -42,6 +42,7 @@ export default async function MonthlyDashboardPage({ params }) {
 
     // Fetch monthly settings
     const settings = await getMonthlySettings(resolvedParams.year, resolvedParams.month);
+    const monthlyExpenses = await getMonthlyExpenses(resolvedParams.year, resolvedParams.month);
 
     return (
         <MonthlyDashboardClient
@@ -50,6 +51,7 @@ export default async function MonthlyDashboardPage({ params }) {
             totals={totals}
             prevMonthProfit={prevMonthProfit}
             initialSettings={settings}
+            initialMonthlyExpenses={monthlyExpenses}
             entries={entries}
         />
     );

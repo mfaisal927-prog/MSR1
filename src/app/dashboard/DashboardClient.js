@@ -82,7 +82,7 @@ export default function DashboardClient({ sixMonthsData }) {
                                     className="card monthly-summary-card"
                                     onClick={() => navigateTo(`/monthly/${data.year}/${monthStr}`)}
                                     style={{
-                                        backgroundColor: bgColor,
+                                        backgroundColor: isPositive ? 'var(--bg-positive)' : 'var(--bg-negative)',
                                         cursor: 'pointer',
                                         transition: 'transform 0.2s, box-shadow 0.2s',
                                         position: 'relative',

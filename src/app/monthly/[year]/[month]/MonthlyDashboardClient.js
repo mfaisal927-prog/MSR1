@@ -1,20 +1,29 @@
 "use client";
 import { useState, useTransition, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { updateMonthlySettings } from "../../../actions";
+import { addMonthlyExpense, deleteMonthlyExpense, updateMonthlyExpense, updateMonthlySettings } from "../../../actions";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, LineChart, Line, Legend } from 'recharts';
 import { Download, FileText, Plus, List, Upload, ClipboardPaste } from 'lucide-react';
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 
-export default function MonthlyDashboardClient({ year, month, totals, prevMonthProfit, initialSettings, entries = [] }) {
+export default function MonthlyDashboardClient({ year, month, totals, prevMonthProfit, initialSettings, initialMonthlyExpenses = [], entries = [] }) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [mounted, setMounted] = useState(false);
+    const [monthlyExpenses, setMonthlyExpenses] = useState(initialMonthlyExpenses);
+    const [expenseForm, setExpenseForm] = useState({ title: "", amount: "", notes: "" });
+    const [editingExpenseId, setEditingExpenseId] = useState(null);
+    const [expenseError, setExpenseError] = useState("");
+    const [expenseSubmitting, setExpenseSubmitting] = useState(false);
 
     useEffect(() => {
         setMounted(true);
     }, []);
+
+    useEffect(() => {
+        setMonthlyExpenses(initialMonthlyExpenses);
+    }, [initialMonthlyExpenses]);
 
     const monthLabels = {
         "01": "جنوری", "02": "فروری", "03": "مارچ", "04": "اپریل",
@@ -34,17 +43,92 @@ export default function MonthlyDashboardClient({ year, month, totals, prevMonthP
 
     const isOptionOn = initialSettings?.include_prev_profit || false;
 
+    const resetExpenseForm = () => {
+        setExpenseForm({ title: "", amount: "", notes: "" });
+        setEditingExpenseId(null);
+        setExpenseError("");
+    };
+
+    const handleExpenseFormChange = (field, value) => {
+        setExpenseForm(prev => ({ ...prev, [field]: value }));
+        setExpenseError("");
+    };
+
+    const buildExpenseFormData = () => {
+        const formData = new FormData();
+        formData.append("title", expenseForm.title);
+        formData.append("amount", expenseForm.amount);
+        formData.append("notes", expenseForm.notes);
+        return formData;
+    };
+
+    const handleExpenseSubmit = async (e) => {
+        e.preventDefault();
+        setExpenseSubmitting(true);
+        setExpenseError("");
+
+        const response = editingExpenseId
+            ? await updateMonthlyExpense(editingExpenseId, year, month, buildExpenseFormData())
+            : await addMonthlyExpense(year, month, buildExpenseFormData());
+
+        if (!response.success) {
+            setExpenseError(response.error || "ماہانہ خرچ محفوظ نہیں ہو سکا۔");
+            setExpenseSubmitting(false);
+            return;
+        }
+
+        setMonthlyExpenses(prev => {
+            if (editingExpenseId) {
+                return prev.map(item => item.id === response.expense.id ? response.expense : item);
+            }
+            return [...prev, response.expense];
+        });
+
+        resetExpenseForm();
+        setExpenseSubmitting(false);
+    };
+
+    const handleEditExpense = (expense) => {
+        setEditingExpenseId(expense.id);
+        setExpenseForm({
+            title: expense.title,
+            amount: expense.amount.toString(),
+            notes: expense.notes || "",
+        });
+        setExpenseError("");
+    };
+
+    const handleDeleteExpense = async (expense) => {
+        const shouldDelete = window.confirm(`${expense.title} حذف کرنا چاہتے ہیں؟`);
+        if (!shouldDelete) return;
+
+        setExpenseSubmitting(true);
+        setExpenseError("");
+
+        const response = await deleteMonthlyExpense(expense.id, year, month);
+        if (!response.success) {
+            setExpenseError(response.error || "ماہانہ خرچ حذف نہیں ہو سکا۔");
+            setExpenseSubmitting(false);
+            return;
+        }
+
+        setMonthlyExpenses(prev => prev.filter(item => item.id !== expense.id));
+        if (editingExpenseId === expense.id) resetExpenseForm();
+        setExpenseSubmitting(false);
+    };
+
     // Memoize the analytics
     const {
         displayExpenses, displayProfit,
         dailyData, weeklyProfit, maxSaleDayText,
-        avgDailySale, totalExtraExpense
+        avgDailySale, totalExtraExpense, monthlyExpenseTotal
     } = useMemo(() => {
-        let expenses = totals.expenses;
-        let profit = totals.profit;
+        const monthlyExpenseTotal = monthlyExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+        let expenses = totals.expenses + monthlyExpenseTotal;
+        let profit = totals.sales - (totals.purchases + expenses);
 
         if (isOptionOn) {
-            expenses = totals.expenses + prevMonthProfit;
+            expenses = expenses + prevMonthProfit;
             profit = totals.sales - (totals.purchases + expenses);
         }
 
@@ -86,9 +170,10 @@ export default function MonthlyDashboardClient({ year, month, totals, prevMonthP
             weeklyProfit: [w1, w2, w3, w4],
             maxSaleDayText: maxSaleDay,
             avgDailySale,
+            monthlyExpenseTotal,
             totalExtraExpense: entries.reduce((sum, e) => sum + (e.extra_expense_total || 0), 0)
         };
-    }, [totals, prevMonthProfit, isOptionOn, entries]);
+    }, [totals, prevMonthProfit, isOptionOn, entries, monthlyExpenses]);
 
     const barChartData = [
         { name: 'سیل', sum: totals.sales, fill: '#14532d' },
@@ -133,6 +218,7 @@ export default function MonthlyDashboardClient({ year, month, totals, prevMonthP
         doc.text(`Total Purchase: ${totals.purchases} OMR`, 40, 90);
         doc.text(`Total Expense: ${displayExpenses} OMR`, 40, 110);
         doc.text(`Net Profit: ${displayProfit} OMR`, 40, 130);
+        doc.text(`Monthly Expenses: ${monthlyExpenseTotal} OMR`, 40, 150);
 
         const tableColumn = ["Date", "Day", "Sale", "Purchase", "Expense", "Profit"];
         const tableRows = [];
@@ -152,7 +238,7 @@ export default function MonthlyDashboardClient({ year, month, totals, prevMonthP
         doc.autoTable({
             head: [tableColumn],
             body: tableRows,
-            startY: 150,
+            startY: 170,
             theme: 'striped',
             headStyles: { fillColor: [20, 83, 45] }
         });
@@ -230,7 +316,10 @@ export default function MonthlyDashboardClient({ year, month, totals, prevMonthP
                     <div className="summary-card">
                         <div className="card-title">{isOptionOn ? "ایڈجسٹڈ اخراجات" : "کل اخراجات"}</div>
                         <div className="card-value"><span className="card-currency">OMR</span>{displayExpenses.toFixed(2)}</div>
-                        {isOptionOn && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>اصل: {totals.expenses.toFixed(2)} + پچھلا منافع: {prevMonthProfit.toFixed(2)}</div>}
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                            روزانہ: {totals.expenses.toFixed(2)} + ماہانہ: {monthlyExpenseTotal.toFixed(2)}
+                            {isOptionOn ? ` + پچھلا منافع: ${prevMonthProfit.toFixed(2)}` : ""}
+                        </div>
                     </div>
                     <div className="summary-card">
                         <div className="card-title">{isOptionOn ? "ایڈجسٹڈ منافع" : "خالص منافع"}</div>
@@ -240,10 +329,101 @@ export default function MonthlyDashboardClient({ year, month, totals, prevMonthP
                 </div>
 
                 <div style={{ marginTop: '1rem', marginBottom: '2rem' }}>
-                    <div className="summary-card" style={{ borderColor: '#f97316', backgroundColor: '#fff7ed', maxWidth: '300px', padding: '1rem 1.25rem' }}>
-                        <div className="card-title" style={{ color: '#c2410c' }}>اضافی اخراجات (پرسنل)</div>
-                        <div className="card-value" style={{ fontSize: '1.5rem', color: '#ea580c' }}><span className="card-currency" style={{ color: '#ea580c' }}>OMR</span>{totalExtraExpense.toFixed(2)}</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                        <div className="summary-card" style={{ borderColor: '#f97316', backgroundColor: '#fff7ed', maxWidth: '300px', padding: '1rem 1.25rem' }}>
+                            <div className="card-title" style={{ color: '#c2410c' }}>اضافی اخراجات (پرسنل)</div>
+                            <div className="card-value" style={{ fontSize: '1.5rem', color: '#ea580c' }}><span className="card-currency" style={{ color: '#ea580c' }}>OMR</span>{totalExtraExpense.toFixed(2)}</div>
+                        </div>
+                        <div className="summary-card" style={{ borderColor: '#0ea5e9', backgroundColor: '#eff6ff', maxWidth: '300px', padding: '1rem 1.25rem' }}>
+                            <div className="card-title" style={{ color: '#0369a1' }}>ماہانہ اخراجات</div>
+                            <div className="card-value" style={{ fontSize: '1.5rem', color: '#0284c7' }}><span className="card-currency" style={{ color: '#0284c7' }}>OMR</span>{monthlyExpenseTotal.toFixed(2)}</div>
+                        </div>
                     </div>
+                </div>
+
+                <h2 style={{ fontSize: '1.25rem', marginBottom: '1rem', marginTop: '2rem' }}>ماہانہ اخراجات</h2>
+                <div className="card" style={{ marginBottom: '2.5rem' }}>
+                    {expenseError && (
+                        <div className="profit-negative" style={{ padding: '0.85rem', marginBottom: '1rem', backgroundColor: '#fee2e2', borderRadius: 'var(--radius-sm)', textAlign: 'center', fontWeight: 'bold' }}>
+                            {expenseError}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleExpenseSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', alignItems: 'end', marginBottom: '1.25rem' }}>
+                        <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label" htmlFor="monthly-expense-title">خرچ کا نام</label>
+                            <input
+                                id="monthly-expense-title"
+                                type="text"
+                                className="form-input"
+                                placeholder="مثلاً کرایہ، روم، کمیٹی"
+                                value={expenseForm.title}
+                                onChange={(e) => handleExpenseFormChange("title", e.target.value)}
+                                required
+                            />
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label" htmlFor="monthly-expense-amount">رقم (OMR)</label>
+                            <input
+                                id="monthly-expense-amount"
+                                type="number"
+                                step="any"
+                                min="0"
+                                className="form-input numeric-input"
+                                placeholder="0"
+                                value={expenseForm.amount}
+                                onChange={(e) => handleExpenseFormChange("amount", e.target.value)}
+                                required
+                            />
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label" htmlFor="monthly-expense-notes">نوٹ</label>
+                            <input
+                                id="monthly-expense-notes"
+                                type="text"
+                                className="form-input"
+                                placeholder="اختیاری"
+                                value={expenseForm.notes}
+                                onChange={(e) => handleExpenseFormChange("notes", e.target.value)}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <button type="submit" className="btn-save" style={{ width: 'auto', margin: 0 }} disabled={expenseSubmitting}>
+                                {expenseSubmitting ? "محفوظ..." : editingExpenseId ? "تبدیل کریں" : "شامل کریں"}
+                            </button>
+                            {editingExpenseId && (
+                                <button type="button" className="btn-cancel" style={{ width: 'auto', margin: 0 }} onClick={resetExpenseForm} disabled={expenseSubmitting}>
+                                    منسوخ
+                                </button>
+                            )}
+                        </div>
+                    </form>
+
+                    {monthlyExpenses.length === 0 ? (
+                        <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '1rem 0' }}>
+                            اس ماہ ابھی کوئی ماہانہ خرچ شامل نہیں کیا گیا۔
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                            {monthlyExpenses.map(expense => (
+                                <div key={expense.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto auto', gap: '0.75rem', alignItems: 'center', padding: '0.85rem 1rem', border: '1px solid var(--border)', borderRadius: '10px', backgroundColor: 'var(--bg-color)' }}>
+                                    <div>
+                                        <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{expense.title}</div>
+                                        {expense.notes && <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{expense.notes}</div>}
+                                    </div>
+                                    <div style={{ direction: 'ltr', fontWeight: 800, color: '#0369a1' }}>OMR {expense.amount.toFixed(2)}</div>
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <button type="button" className="btn-action" style={{ width: 'auto', padding: '0.45rem 0.8rem', fontSize: '0.85rem' }} onClick={() => handleEditExpense(expense)} disabled={expenseSubmitting}>
+                                            ترمیم
+                                        </button>
+                                        <button type="button" className="btn-cancel" style={{ width: 'auto', margin: 0, padding: '0.45rem 0.8rem', fontSize: '0.85rem' }} onClick={() => handleDeleteExpense(expense)} disabled={expenseSubmitting}>
+                                            حذف
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* SMART INSIGHTS */}
