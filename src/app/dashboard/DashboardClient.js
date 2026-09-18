@@ -1,5 +1,5 @@
 "use client";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
     BarChart3,
@@ -17,33 +17,114 @@ import {
 } from "lucide-react";
 
 const monthLabels = {
-    1: "جنوری",
-    2: "فروری",
-    3: "مارچ",
-    4: "اپریل",
-    5: "مئی",
-    6: "جون",
-    7: "جولائی",
-    8: "اگست",
-    9: "ستمبر",
-    10: "اکتوبر",
-    11: "نومبر",
-    12: "دسمبر",
+    ur: {
+        1: "جنوری",
+        2: "فروری",
+        3: "مارچ",
+        4: "اپریل",
+        5: "مئی",
+        6: "جون",
+        7: "جولائی",
+        8: "اگست",
+        9: "ستمبر",
+        10: "اکتوبر",
+        11: "نومبر",
+        12: "دسمبر",
+    },
+    en: {
+        1: "January",
+        2: "February",
+        3: "March",
+        4: "April",
+        5: "May",
+        6: "June",
+        7: "July",
+        8: "August",
+        9: "September",
+        10: "October",
+        11: "November",
+        12: "December",
+    },
+};
+
+const copy = {
+    ur: {
+        noRecord: "ابھی کوئی ریکارڈ موجود نہیں",
+        title: "آپریشن ڈیش بورڈ",
+        latestRecord: "تازہ ترین ریکارڈ",
+        monthSummary: (count) => `${count} ماہ کا خلاصہ`,
+        summaryCards: {
+            sales: ["آخری سیل", "محفوظ شدہ تازہ ترین دن"],
+            purchases: ["آخری خریداری", "سپلائر اور اسٹاک خرچ"],
+            expenses: ["کل اخراجات", "روزانہ + اضافی اخراجات"],
+            profitPositive: "مثبت کارکردگی",
+            profitNegative: "توجہ کی ضرورت",
+            profitTitle: "بچت / منافع",
+        },
+        trend: "Trend View",
+        monthsHeading: "پچھلے مہینوں کا خلاصہ",
+        empty: "کوئی ریکارڈ موجود نہیں ہے۔",
+        sales: "سیل",
+        purchases: "خریداری",
+        expenses: "اخراجات",
+        profit: "منافع",
+        workflow: "Daily Workflow",
+        quickHeading: "فوری روابط",
+        actions: {
+            entry: "نئی انٹری کریں",
+            records: "تمام ریکارڈ دیکھیں",
+            daily: "مخصوص تاریخ کا ریکارڈ",
+            monthly: "ماہانہ حساب",
+            reports: "رپورٹس",
+            purchases: "خریداری مینجمنٹ",
+        },
+    },
+    en: {
+        noRecord: "No records yet",
+        title: "Operations Dashboard",
+        latestRecord: "Latest record",
+        monthSummary: (count) => `${count} month summary`,
+        summaryCards: {
+            sales: ["Latest Sale", "Most recent saved day"],
+            purchases: ["Latest Purchase", "Supplier and stock cost"],
+            expenses: ["Total Expenses", "Daily + extra expenses"],
+            profitPositive: "Positive performance",
+            profitNegative: "Needs attention",
+            profitTitle: "Savings / Profit",
+        },
+        trend: "Trend View",
+        monthsHeading: "Recent Monthly Summary",
+        empty: "No records are available yet.",
+        sales: "Sales",
+        purchases: "Purchases",
+        expenses: "Expenses",
+        profit: "Profit",
+        workflow: "Daily Workflow",
+        quickHeading: "Quick Actions",
+        actions: {
+            entry: "New Entry",
+            records: "All Records",
+            daily: "Specific Date",
+            monthly: "Monthly Accounts",
+            reports: "Reports",
+            purchases: "Purchases",
+        },
+    },
 };
 
 function formatAmount(value) {
     return Number(value || 0).toFixed(2);
 }
 
-function formatDateLabel(dateValue) {
-    if (!dateValue) return "ابھی کوئی ریکارڈ موجود نہیں";
+function formatDateLabel(dateValue, language) {
+    if (!dateValue) return copy[language].noRecord;
     const normalizedDate = typeof dateValue === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)
         ? new Date(`${dateValue}T12:00:00`)
         : new Date(dateValue);
     const date = normalizedDate;
     if (Number.isNaN(date.getTime())) return dateValue;
 
-    return date.toLocaleDateString("ur-PK", {
+    return date.toLocaleDateString(language === "ur" ? "ur-PK" : "en-US", {
         year: "numeric",
         month: "long",
         day: "numeric",
@@ -52,6 +133,22 @@ function formatDateLabel(dateValue) {
 
 export default function DashboardClient({ sixMonthsData = [], latestEntry }) {
     const router = useRouter();
+    const [language, setLanguage] = useState("ur");
+
+    useEffect(() => {
+        const syncLanguage = () => {
+            const nextLanguage = document.documentElement.getAttribute("lang") === "en" ? "en" : "ur";
+            setLanguage(nextLanguage);
+        };
+
+        syncLanguage();
+        const observer = new MutationObserver(syncLanguage);
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
+
+        return () => observer.disconnect();
+    }, []);
+
+    const t = copy[language];
 
     const navigateTo = (path) => {
         router.push(path);
@@ -70,43 +167,43 @@ export default function DashboardClient({ sixMonthsData = [], latestEntry }) {
 
     const summaryCards = [
         {
-            title: "آخری سیل",
+            title: t.summaryCards.sales[0],
             value: latestTotals.sales,
             icon: ShoppingBag,
             tone: "blue",
-            note: "محفوظ شدہ تازہ ترین دن",
+            note: t.summaryCards.sales[1],
         },
         {
-            title: "آخری خریداری",
+            title: t.summaryCards.purchases[0],
             value: latestTotals.purchases,
             icon: PackageCheck,
             tone: "amber",
-            note: "سپلائر اور اسٹاک خرچ",
+            note: t.summaryCards.purchases[1],
         },
         {
-            title: "کل اخراجات",
+            title: t.summaryCards.expenses[0],
             value: latestTotals.totalExpenses,
             icon: ReceiptText,
             tone: "rose",
-            note: "روزانہ + اضافی اخراجات",
+            note: t.summaryCards.expenses[1],
         },
         {
-            title: "بچت / منافع",
+            title: t.summaryCards.profitTitle,
             value: latestTotals.profit,
             icon: latestTotals.profit >= 0 ? TrendingUp : TrendingDown,
             tone: latestTotals.profit >= 0 ? "green" : "rose",
-            note: latestTotals.profit >= 0 ? "مثبت کارکردگی" : "توجہ کی ضرورت",
+            note: latestTotals.profit >= 0 ? t.summaryCards.profitPositive : t.summaryCards.profitNegative,
             valueClass: latestTotals.profit >= 0 ? "profit-positive" : "profit-negative",
         },
     ];
 
     const quickActions = [
-        { label: "نئی انٹری کریں", path: "/daily-entry", icon: PlusCircle, tone: "green" },
-        { label: "تمام ریکارڈ دیکھیں", path: "/records", icon: ClipboardList, tone: "indigo" },
-        { label: "مخصوص تاریخ کا ریکارڈ", path: "/daily", icon: Search, tone: "violet" },
-        { label: "ماہانہ حساب", path: "/monthly", icon: CalendarRange, tone: "blue" },
-        { label: "رپورٹس", path: "/reports", icon: BarChart3, tone: "teal" },
-        { label: "خریداری مینجمنٹ", path: "/purchases", icon: Wallet, tone: "amber" },
+        { label: t.actions.entry, path: "/daily-entry", icon: PlusCircle, tone: "green" },
+        { label: t.actions.records, path: "/records", icon: ClipboardList, tone: "indigo" },
+        { label: t.actions.daily, path: "/daily", icon: Search, tone: "violet" },
+        { label: t.actions.monthly, path: "/monthly", icon: CalendarRange, tone: "blue" },
+        { label: t.actions.reports, path: "/reports", icon: BarChart3, tone: "teal" },
+        { label: t.actions.purchases, path: "/purchases", icon: Wallet, tone: "amber" },
     ];
 
     return (
@@ -114,15 +211,15 @@ export default function DashboardClient({ sixMonthsData = [], latestEntry }) {
             <section className="dashboard-hero animate-slide-up">
                 <div>
                     <span className="eyebrow">Malik Sajawal Refreshment</span>
-                    <h1 className="dashboard-title">آپریشن ڈیش بورڈ</h1>
+                    <h1 className="dashboard-title">{t.title}</h1>
                     <p className="dashboard-subtitle">
-                        تازہ ترین ریکارڈ: {formatDateLabel(latestEntry?.date)}
+                        {t.latestRecord}: {formatDateLabel(latestEntry?.date, language)}
                     </p>
                 </div>
 
                 <div className="dashboard-hero-meta">
                     <span>Live Accounting</span>
-                    <strong>{sixMonthsData.length} ماہ کا خلاصہ</strong>
+                    <strong>{t.monthSummary(sixMonthsData.length)}</strong>
                 </div>
             </section>
 
@@ -150,14 +247,14 @@ export default function DashboardClient({ sixMonthsData = [], latestEntry }) {
             <section className="dashboard-section animate-slide-up" style={{ animationDelay: "0.16s" }}>
                 <div className="section-heading">
                     <div>
-                        <span className="eyebrow">Trend View</span>
-                        <h2>پچھلے مہینوں کا خلاصہ</h2>
+                        <span className="eyebrow">{t.trend}</span>
+                        <h2>{t.monthsHeading}</h2>
                     </div>
                 </div>
 
                 <div className="month-summary-grid">
                     {sixMonthsData.length === 0 ? (
-                        <div className="empty-state">کوئی ریکارڈ موجود نہیں ہے۔</div>
+                        <div className="empty-state">{t.empty}</div>
                     ) : (
                         sixMonthsData.map((data, index) => {
                             const isPositive = (data._sum.profit_total || 0) >= 0;
@@ -174,19 +271,19 @@ export default function DashboardClient({ sixMonthsData = [], latestEntry }) {
                                         <span className="metric-icon">
                                             <CalendarDays size={18} />
                                         </span>
-                                        <strong>{monthLabels[data.month]} {data.year}</strong>
+                                        <strong>{monthLabels[language][data.month]} {data.year}</strong>
                                     </div>
 
                                     <div className="monthly-lines">
-                                        <span>سیل <b>{formatAmount(data._sum.sale_total)} OMR</b></span>
-                                        <span>خریداری <b>{formatAmount(data._sum.purchase_total)} OMR</b></span>
+                                        <span>{t.sales} <b>{formatAmount(data._sum.sale_total)} OMR</b></span>
+                                        <span>{t.purchases} <b>{formatAmount(data._sum.purchase_total)} OMR</b></span>
                                         <span>
-                                            اخراجات <b>{formatAmount((data._sum.expense_total || 0) + (data._sum.extra_expense_total || 0))} OMR</b>
+                                            {t.expenses} <b>{formatAmount((data._sum.expense_total || 0) + (data._sum.extra_expense_total || 0))} OMR</b>
                                         </span>
                                     </div>
 
                                     <div className="monthly-profit">
-                                        <span>منافع</span>
+                                        <span>{t.profit}</span>
                                         <b>
                                             {isPositive ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
                                             {formatAmount(data._sum.profit_total)} OMR
@@ -202,8 +299,8 @@ export default function DashboardClient({ sixMonthsData = [], latestEntry }) {
             <section className="dashboard-section animate-slide-up" style={{ animationDelay: "0.24s" }}>
                 <div className="section-heading">
                     <div>
-                        <span className="eyebrow">Daily Workflow</span>
-                        <h2>فوری روابط</h2>
+                        <span className="eyebrow">{t.workflow}</span>
+                        <h2>{t.quickHeading}</h2>
                     </div>
                 </div>
 

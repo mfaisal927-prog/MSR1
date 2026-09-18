@@ -89,29 +89,29 @@ export default function ClientLayout({ children }) {
         {
             title: language === 'ur' ? 'مرکزی' : 'Main',
             items: [
-                { name: 'ڈیش بورڈ', nameEn: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, color: '#10b981', bgColor: 'rgba(16, 185, 129, 0.1)' }
+                { name: 'ڈیش بورڈ', nameEn: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, color: '#059669', bgColor: 'rgba(5, 150, 105, 0.12)' }
             ]
         },
         {
             title: language === 'ur' ? 'حساب' : 'Accounting',
             items: [
-                { name: 'ماہانہ حساب', nameEn: 'Monthly', path: '/monthly', icon: CalendarDays, color: '#3b82f6', bgColor: 'rgba(59, 130, 246, 0.1)' },
-                { name: 'ڈیلی ریکارڈ', nameEn: 'Daily Records', path: '/records', icon: List, color: '#6366f1', bgColor: 'rgba(99, 102, 241, 0.1)' },
-                { name: 'مخصوص تاریخ', nameEn: 'Specific Date', path: '/daily', icon: CalendarSearch, color: '#8b5cf6', bgColor: 'rgba(139, 92, 246, 0.1)' },
-                { name: 'خریداری', nameEn: 'Purchases', path: '/purchases', icon: ShoppingCart, color: '#f97316', bgColor: 'rgba(249, 115, 22, 0.1)' }
+                { name: 'ماہانہ حساب', nameEn: 'Monthly', path: '/monthly', icon: CalendarDays, color: '#2563eb', bgColor: 'rgba(37, 99, 235, 0.12)' },
+                { name: 'ڈیلی ریکارڈ', nameEn: 'Daily Records', path: '/records', icon: List, color: '#4f46e5', bgColor: 'rgba(79, 70, 229, 0.12)' },
+                { name: 'مخصوص تاریخ', nameEn: 'Specific Date', path: '/daily', icon: CalendarSearch, color: '#7c3aed', bgColor: 'rgba(124, 58, 237, 0.12)' },
+                { name: 'خریداری', nameEn: 'Purchases', path: '/purchases', icon: ShoppingCart, color: '#ea580c', bgColor: 'rgba(234, 88, 12, 0.12)' }
             ]
         },
         {
             title: language === 'ur' ? 'رپورٹس' : 'Analytics',
             items: [
-                { name: 'رپورٹس', nameEn: 'Reports', path: '/reports', icon: BarChart3, color: '#14b8a6', bgColor: 'rgba(20, 184, 166, 0.1)' },
-                { name: 'تجزیہ', nameEn: 'Analysis', path: '/dashboard#analytics', icon: PieChart, color: '#0ea5e9', bgColor: 'rgba(14, 165, 233, 0.1)' }
+                { name: 'رپورٹس', nameEn: 'Reports', path: '/reports', icon: BarChart3, color: '#0f766e', bgColor: 'rgba(15, 118, 110, 0.12)' },
+                { name: 'تجزیہ', nameEn: 'Analysis', path: '/dashboard#analytics', icon: PieChart, color: '#0284c7', bgColor: 'rgba(2, 132, 199, 0.12)' }
             ]
         },
         {
             title: language === 'ur' ? 'سسٹم' : 'System',
             items: [
-                { name: 'سیٹنگز', nameEn: 'Settings', path: '/settings', icon: Settings, color: '#64748b', bgColor: 'rgba(100, 116, 139, 0.1)' }
+                { name: 'سیٹنگز', nameEn: 'Settings', path: '/settings', icon: Settings, color: '#475569', bgColor: 'rgba(71, 85, 105, 0.12)' }
             ]
         }
     ];
@@ -154,9 +154,11 @@ export default function ClientLayout({ children }) {
                                             '--item-color': item.color,
                                             '--item-bg': item.bgColor
                                         }}
-                                        title={isCollapsed ? item.name : ''}>
-                                        <Icon size={20} className={`sidebar-icon ${isActive ? 'icon-active' : ''}`} />
-                                        {!isCollapsed && <span>{language === 'ur' ? item.name : item.nameEn}</span>}
+                                        title={isCollapsed ? (language === 'ur' ? item.name : item.nameEn) : ''}>
+                                        <span className="sidebar-icon-tile">
+                                            <Icon size={20} className={`sidebar-icon ${isActive ? 'icon-active' : ''}`} />
+                                        </span>
+                                        {!isCollapsed && <span className="sidebar-label">{language === 'ur' ? item.name : item.nameEn}</span>}
                                     </Link>
                                 );
                             })}
@@ -203,8 +205,10 @@ export default function ClientLayout({ children }) {
 
                 <div className="sidebar-footer">
                     <button onClick={handleLogout} className="sidebar-link logout-btn" title={isCollapsed ? (language === 'ur' ? 'لاگ آؤٹ' : 'Logout') : ''} disabled={isLoggingOut}>
-                        <LogOut size={20} />
-                        {!isCollapsed && <span>{isLoggingOut ? (language === 'ur' ? 'لاگ آؤٹ...' : 'Logging out...') : (language === 'ur' ? 'لاگ آؤٹ' : 'Logout')}</span>}
+                        <span className="sidebar-icon-tile">
+                            <LogOut size={20} className="sidebar-icon" />
+                        </span>
+                        {!isCollapsed && <span className="sidebar-label">{isLoggingOut ? (language === 'ur' ? 'لاگ آؤٹ...' : 'Logging out...') : (language === 'ur' ? 'لاگ آؤٹ' : 'Logout')}</span>}
                     </button>
                 </div>
             </aside>
@@ -378,56 +382,84 @@ export default function ClientLayout({ children }) {
                     border-radius: 4px;
                 }
                 .nav-group {
-                    margin-bottom: 20px;
+                    margin-bottom: 18px;
                     display: flex;
                     flex-direction: column;
-                    gap: 4px;
+                    gap: 6px;
                 }
                 .nav-group:last-child {
                     margin-bottom: 0;
                 }
                 .nav-group-title {
-                    font-size: 12px;
-                    font-weight: 600;
+                    font-size: 11px;
+                    font-weight: 800;
                     color: var(--text-muted);
-                    opacity: 0.8;
-                    margin-bottom: 8px;
-                    padding-bottom: 8px;
+                    opacity: 0.72;
+                    margin-bottom: 6px;
+                    padding: 0 8px 8px;
                     border-bottom: 1px solid var(--border);
+                    text-transform: uppercase;
+                    letter-spacing: 0;
                 }
                 .sidebar-link {
                     display: flex;
                     align-items: center;
-                    gap: 12px;
-                    height: 48px;
-                    padding: 0 14px;
-                    color: var(--text-muted);
-                    font-weight: 500;
+                    justify-content: flex-start;
+                    gap: 10px;
+                    min-height: 56px;
+                    padding: 8px 10px;
+                    color: var(--text-main);
+                    font-weight: 650;
                     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                     text-decoration: none;
                     background: transparent;
-                    border: none;
+                    border: 1px solid transparent;
                     width: 100%;
                     box-sizing: border-box;
                     border-radius: 8px;
-                    text-align: right;
+                    text-align: start;
                     cursor: pointer;
                     font-family: inherit;
-                    font-size: 14px;
+                    font-size: 15px;
                     position: relative;
-                    margin-bottom: 2px;
+                    margin-bottom: 0;
                     overflow: hidden;
+                    line-height: 1.35;
                 }
                 .sidebar.collapsed .sidebar-link {
                     justify-content: center;
-                    padding: 0;
+                    padding: 8px;
+                    min-height: 52px;
+                }
+                .sidebar-icon-tile {
+                    width: 38px;
+                    height: 38px;
+                    border-radius: 8px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    flex: 0 0 auto;
+                    color: var(--item-color, var(--primary));
+                    background-color: var(--item-bg, rgba(15, 159, 122, 0.1));
+                    border: 1px solid color-mix(in srgb, var(--item-color, var(--primary)) 18%, transparent);
+                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+                    transition: all 0.25s ease;
                 }
                 .sidebar-icon {
-                    color: var(--text-muted);
+                    color: currentColor;
                     transition: all 0.3s ease;
+                    stroke-width: 2.25;
+                }
+                .sidebar-label {
+                    flex: 1;
+                    min-width: 0;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
                 }
                 .sidebar-link:hover {
-                    background-color: var(--item-bg, var(--bg-color));
+                    background-color: color-mix(in srgb, var(--item-color, var(--primary)) 8%, var(--card-bg));
+                    border-color: color-mix(in srgb, var(--item-color, var(--primary)) 18%, var(--border));
                     color: var(--item-color, var(--primary));
                 }
                 html[dir="rtl"] .sidebar-link:hover {
@@ -436,22 +468,25 @@ export default function ClientLayout({ children }) {
                 html[dir="ltr"] .sidebar-link:hover {
                     transform: translateX(2px);
                 }
-                .sidebar-link:hover .sidebar-icon {
-                    color: var(--item-color, var(--primary));
-                    transform: scale(1.1);
+                .sidebar-link:hover .sidebar-icon-tile {
+                    background-color: var(--item-color, var(--primary));
+                    color: white;
+                    transform: scale(1.03);
                 }
                 .sidebar.collapsed .sidebar-link:hover {
                     transform: scale(1.05);
                 }
                 .sidebar-link.active {
-                    background-color: var(--item-bg, rgba(16, 185, 129, 0.1));
+                    background-color: color-mix(in srgb, var(--item-color, var(--primary)) 11%, var(--card-bg));
+                    border-color: color-mix(in srgb, var(--item-color, var(--primary)) 24%, var(--border));
                     color: var(--item-color, var(--primary));
-                    font-weight: 700;
+                    font-weight: 800;
+                    box-shadow: 0 8px 22px rgba(18, 35, 31, 0.06);
                 }
                 .sidebar-link.active::before {
                     content: '';
                     position: absolute;
-                    right: 4px;
+                    inset-inline-start: 4px;
                     top: 50%;
                     transform: translateY(-50%);
                     width: 4px;
@@ -460,12 +495,15 @@ export default function ClientLayout({ children }) {
                     border-radius: 4px;
                     transition: all 0.3s ease;
                 }
-                .sidebar-link.active .sidebar-icon {
-                    color: var(--item-color, var(--primary));
-                    fill: var(--item-bg, transparent);
+                .sidebar-link.active .sidebar-icon-tile {
+                    background-color: var(--item-color, var(--primary));
+                    color: white;
+                    border-color: transparent;
+                    box-shadow: 0 8px 18px color-mix(in srgb, var(--item-color, var(--primary)) 25%, transparent);
                 }
                 [data-theme='dark'] .sidebar-link.active {
-                    background-color: var(--item-bg);
+                    background-color: color-mix(in srgb, var(--item-color, var(--primary)) 18%, var(--card-bg));
+                    box-shadow: none;
                 }
                 .sidebar-footer {
                     margin-top: auto;
@@ -474,7 +512,7 @@ export default function ClientLayout({ children }) {
                 .logout-btn {
                     color: var(--danger);
                     --item-color: var(--danger);
-                    --item-bg: rgba(239, 68, 68, 0.1);
+                    --item-bg: rgba(220, 38, 38, 0.11);
                 }
                 .logout-btn:hover {
                     background-color: var(--item-bg);
