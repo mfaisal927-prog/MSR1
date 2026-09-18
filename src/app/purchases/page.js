@@ -1,11 +1,64 @@
 import Link from "next/link";
-import { getPurchaseHistory } from "../purchaseActions";
-import { PlusCircle, ShoppingBag, Store, Search, History } from "lucide-react";
+import { getItemUsageSummary, getPurchaseHistory } from "../purchaseActions";
+import {
+    CalendarDays,
+    History,
+    Layers3,
+    PackageCheck,
+    PlusCircle,
+    Search,
+    ShoppingBag,
+    Store,
+    WalletCards
+} from "lucide-react";
 
 export const dynamic = 'force-dynamic';
 
+function formatAmount(value) {
+    return Number(value || 0).toFixed(2);
+}
+
+function formatQuantity(value) {
+    const numberValue = Number(value || 0);
+    return Number.isInteger(numberValue) ? numberValue.toString() : numberValue.toFixed(2);
+}
+
 export default async function PurchasesDashboardPage() {
-    const history = await getPurchaseHistory();
+    const [history, usageSummary] = await Promise.all([
+        getPurchaseHistory(),
+        getItemUsageSummary()
+    ]);
+
+    const usageCards = [
+        {
+            key: "day",
+            title: "تازہ دن",
+            subtitle: usageSummary.reportDate || "کوئی ریکارڈ نہیں",
+            icon: CalendarDays,
+            tone: "usage-green"
+        },
+        {
+            key: "week",
+            title: "7 دن",
+            subtitle: usageSummary.ranges ? `${usageSummary.ranges.week.start} تا ${usageSummary.ranges.week.end}` : "کوئی ریکارڈ نہیں",
+            icon: PackageCheck,
+            tone: "usage-blue"
+        },
+        {
+            key: "twoWeeks",
+            title: "14 دن",
+            subtitle: usageSummary.ranges ? `${usageSummary.ranges.twoWeeks.start} تا ${usageSummary.ranges.twoWeeks.end}` : "کوئی ریکارڈ نہیں",
+            icon: Layers3,
+            tone: "usage-violet"
+        },
+        {
+            key: "month",
+            title: "رواں مہینہ",
+            subtitle: usageSummary.ranges ? `${usageSummary.ranges.month.start} تا ${usageSummary.ranges.month.end}` : "کوئی ریکارڈ نہیں",
+            icon: WalletCards,
+            tone: "usage-amber"
+        }
+    ];
 
     return (
         <div className="container">
@@ -36,6 +89,84 @@ export default async function PurchasesDashboardPage() {
                 </Link>
             </div>
 
+            <section className="purchase-usage-section animate-slide-up" style={{ animationDelay: '0.16s' }}>
+                <div className="section-heading purchase-section-heading">
+                    <div>
+                        <span className="eyebrow">Item Wise Usage</span>
+                        <h2>سامان کے حساب سے روزانہ، ہفتہ وار اور ماہانہ خرچ</h2>
+                        <p>ہر آئٹم کی مقدار اور رقم خودکار طور پر خریداری کے ریکارڈ سے جمع ہوتی رہے گی۔</p>
+                    </div>
+                    <Link href="/purchases/new" className="btn-submit purchase-inline-action">
+                        نئی خریداری شامل کریں
+                    </Link>
+                </div>
+
+                <div className="usage-card-grid">
+                    {usageCards.map((card) => {
+                        const Icon = card.icon;
+                        const total = usageSummary.totals[card.key];
+                        return (
+                            <div key={card.key} className={`usage-total-card ${card.tone}`}>
+                                <span className="usage-total-icon">
+                                    <Icon size={20} />
+                                </span>
+                                <div>
+                                    <span>{card.title}</span>
+                                    <strong>{formatAmount(total.amount)} OMR</strong>
+                                    <small>{card.subtitle}</small>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                <div className="card purchase-usage-card">
+                    <div className="table-container">
+                        <table className="data-table usage-table">
+                            <thead>
+                                <tr>
+                                    <th>سامان</th>
+                                    <th>تازہ دن</th>
+                                    <th>7 دن</th>
+                                    <th>14 دن</th>
+                                    <th>مہینہ</th>
+                                    <th>آخری خرید</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {usageSummary.items.length > 0 ? (
+                                    usageSummary.items.map((item) => (
+                                        <tr key={item.itemId}>
+                                            <td>
+                                                <div className="usage-item-name">
+                                                    <strong>{item.name}</strong>
+                                                    <span>{item.category || "دیگر"} · {item.unit}</span>
+                                                </div>
+                                            </td>
+                                            {["day", "week", "twoWeeks", "month"].map((period) => (
+                                                <td key={period}>
+                                                    <div className="usage-period-cell">
+                                                        <strong>{formatAmount(item[period].amount)} OMR</strong>
+                                                        <span>{formatQuantity(item[period].quantity)} {item.unit}</span>
+                                                    </div>
+                                                </td>
+                                            ))}
+                                            <td style={{ direction: 'ltr', textAlign: 'right' }}>{item.lastDate}</td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>
+                                            ابھی تک item-wise خریداری کا ریکارڈ موجود نہیں۔
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
             <div className="card animate-slide-up" style={{ animationDelay: '0.2s' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <h2 className="section-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -64,9 +195,15 @@ export default async function PurchasesDashboardPage() {
                                             {entry.lines ? entry.lines.reduce((s, line) => s + line.total_price, 0).toLocaleString() : 0}
                                         </td>
                                         <td>
-                                            <button className="icon-btn" title="View details (Not implemented)">
-                                                <Search size={18} color="var(--primary)" />
-                                            </button>
+                                            <div className="purchase-history-lines">
+                                                {entry.lines.slice(0, 3).map((line) => (
+                                                    <span key={line.id}>
+                                                        <Search size={13} />
+                                                        {line.item?.name || "آئٹم"}: {formatQuantity(line.quantity)} {line.unit} · {formatAmount(line.total_price)} OMR
+                                                    </span>
+                                                ))}
+                                                {entry.lines.length > 3 && <small>+{entry.lines.length - 3} مزید آئٹمز</small>}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))

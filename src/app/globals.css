@@ -935,6 +935,184 @@ html[dir="rtl"] .action-tile {
   padding: 1.25rem;
 }
 
+/* Purchase usage analytics */
+.purchase-usage-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.purchase-section-heading p {
+  color: var(--text-muted);
+  margin: 0.35rem 0 0;
+}
+
+.purchase-inline-action {
+  width: auto;
+  white-space: nowrap;
+  padding: 0.72rem 1rem;
+  font-size: 0.95rem;
+}
+
+.usage-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.9rem;
+}
+
+.usage-total-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-inline-start: 4px solid var(--usage-color, var(--accent));
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 1rem;
+}
+
+.usage-total-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  color: var(--usage-color, var(--accent));
+  background: var(--usage-bg, rgba(15, 159, 122, 0.1));
+}
+
+.usage-total-card div {
+  min-width: 0;
+  display: grid;
+  gap: 0.12rem;
+}
+
+.usage-total-card div > span {
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.usage-total-card strong {
+  color: var(--text-main);
+  direction: ltr;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.usage-total-card small {
+  color: var(--text-muted);
+  direction: ltr;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.usage-green {
+  --usage-color: #16a34a;
+  --usage-bg: #dcfce7;
+}
+
+.usage-blue {
+  --usage-color: #2563eb;
+  --usage-bg: #dbeafe;
+}
+
+.usage-violet {
+  --usage-color: #7c3aed;
+  --usage-bg: #ede9fe;
+}
+
+.usage-amber {
+  --usage-color: #d97706;
+  --usage-bg: #fef3c7;
+}
+
+.purchase-usage-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.usage-table th,
+.usage-table td {
+  vertical-align: middle;
+}
+
+.usage-item-name {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.usage-item-name strong {
+  color: var(--text-main);
+  font-size: 1rem;
+}
+
+.usage-item-name span {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.usage-period-cell {
+  display: grid;
+  gap: 0.15rem;
+  direction: ltr;
+  text-align: right;
+}
+
+.usage-period-cell strong {
+  color: var(--text-main);
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.95rem;
+}
+
+.usage-period-cell span {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.purchase-history-lines {
+  display: grid;
+  gap: 0.32rem;
+  min-width: 220px;
+}
+
+.purchase-history-lines span,
+.purchase-history-lines small {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.purchase-history-lines svg {
+  color: var(--accent);
+  flex: 0 0 auto;
+}
+
+[data-theme="dark"] .usage-green {
+  --usage-bg: rgba(22, 163, 74, 0.16);
+}
+
+[data-theme="dark"] .usage-blue {
+  --usage-bg: rgba(37, 99, 235, 0.18);
+}
+
+[data-theme="dark"] .usage-violet {
+  --usage-bg: rgba(124, 58, 237, 0.18);
+}
+
+[data-theme="dark"] .usage-amber {
+  --usage-bg: rgba(217, 119, 6, 0.18);
+}
+
 @media (max-width: 900px) {
   .dashboard-hero {
     align-items: stretch;
@@ -945,6 +1123,15 @@ html[dir="rtl"] .action-tile {
     padding-inline-start: 0;
     border-inline-start: 0;
     text-align: start;
+  }
+
+  .purchase-section-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .purchase-inline-action {
+    width: 100%;
   }
 }
 

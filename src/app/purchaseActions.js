@@ -128,6 +128,7 @@ export async function seedDefaultItems() {
             { name: "دال چنا", category: "گروسری", default_unit: "Kg" },
             { name: "بیسن", category: "گروسری", default_unit: "Kg" },
             { name: "میدہ", category: "گروسری", default_unit: "Kg" },
+            { name: "گول گپے", category: "گروسری", default_unit: "Pcs" },
             { name: "کیچپ", category: "گروسری", default_unit: "Kg" },
             { name: "بادام", category: "ڈرائی فروٹس", default_unit: "Kg" },
             { name: "کاجو", category: "ڈرائی فروٹس", default_unit: "Kg" },
@@ -340,10 +341,179 @@ export async function addPurchaseEntry(date, notes, lines) {
         revalidatePath('/dashboard');
         revalidatePath('/monthly');
         revalidatePath('/daily');
+        revalidatePath('/price-compare');
         return { success: true, result };
     } catch (e) {
         console.error(e);
         return { success: false, error: e.message || "Failed to add purchase entry" };
+    }
+}
+
+function parseDateKey(dateKey) {
+    if (!dateKey || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return null;
+    const [year, month, day] = dateKey.split("-").map(Number);
+    return new Date(Date.UTC(year, month - 1, day));
+}
+
+function formatDateKey(date) {
+    return date.toISOString().slice(0, 10);
+}
+
+function addDays(date, days) {
+    const next = new Date(date.getTime());
+    next.setUTCDate(next.getUTCDate() + days);
+    return next;
+}
+
+function emptyPeriod() {
+    return { quantity: 0, amount: 0 };
+}
+
+function addToPeriod(period, quantity, amount) {
+    period.quantity += quantity;
+    period.amount += amount;
+}
+
+function roundNumber(value) {
+    return Number((value || 0).toFixed(3));
+}
+
+// Item-wise consumption/purchase summary for latest available purchase date.
+export async function getItemUsageSummary() {
+    try {
+        const lines = await prisma.purchaseLine.findMany({
+            include: {
+                item: true,
+                entry: true
+            }
+        });
+
+        const validLines = lines.filter(line => line.entry?.date && parseDateKey(line.entry.date));
+
+        if (validLines.length === 0) {
+            return {
+                reportDate: null,
+                ranges: null,
+                totals: {
+                    day: emptyPeriod(),
+                    week: emptyPeriod(),
+                    twoWeeks: emptyPeriod(),
+                    month: emptyPeriod()
+                },
+                items: []
+            };
+        }
+
+        const reportDate = validLines
+            .map(line => line.entry.date)
+            .sort()
+            .at(-1);
+
+        const report = parseDateKey(reportDate);
+        const weekStart = formatDateKey(addDays(report, -6));
+        const twoWeeksStart = formatDateKey(addDays(report, -13));
+        const monthStart = formatDateKey(new Date(Date.UTC(report.getUTCFullYear(), report.getUTCMonth(), 1)));
+
+        const ranges = {
+            day: { start: reportDate, end: reportDate },
+            week: { start: weekStart, end: reportDate },
+            twoWeeks: { start: twoWeeksStart, end: reportDate },
+            month: { start: monthStart, end: reportDate }
+        };
+
+        const totals = {
+            day: emptyPeriod(),
+            week: emptyPeriod(),
+            twoWeeks: emptyPeriod(),
+            month: emptyPeriod()
+        };
+        const byItem = new Map();
+
+        const ensureItem = (line) => {
+            const itemId = line.itemId;
+            if (!byItem.has(itemId)) {
+                byItem.set(itemId, {
+                    itemId,
+                    name: line.item?.name || "Unknown Item",
+                    category: line.item?.category || "دیگر",
+                    unit: line.item?.default_unit || line.unit || "",
+                    lastDate: line.entry.date,
+                    day: emptyPeriod(),
+                    week: emptyPeriod(),
+                    twoWeeks: emptyPeriod(),
+                    month: emptyPeriod()
+                });
+            }
+
+            const item = byItem.get(itemId);
+            if (line.entry.date > item.lastDate) item.lastDate = line.entry.date;
+            return item;
+        };
+
+        for (const line of validLines) {
+            const date = line.entry.date;
+            if (date > reportDate) continue;
+
+            const quantity = Number(line.quantity_in_base_unit ?? line.quantity ?? 0);
+            const amount = Number(line.total_price ?? 0);
+            const item = ensureItem(line);
+
+            if (date === reportDate) {
+                addToPeriod(item.day, quantity, amount);
+                addToPeriod(totals.day, quantity, amount);
+            }
+
+            if (date >= weekStart) {
+                addToPeriod(item.week, quantity, amount);
+                addToPeriod(totals.week, quantity, amount);
+            }
+
+            if (date >= twoWeeksStart) {
+                addToPeriod(item.twoWeeks, quantity, amount);
+                addToPeriod(totals.twoWeeks, quantity, amount);
+            }
+
+            if (date >= monthStart) {
+                addToPeriod(item.month, quantity, amount);
+                addToPeriod(totals.month, quantity, amount);
+            }
+        }
+
+        const items = Array.from(byItem.values())
+            .map(item => ({
+                ...item,
+                day: { quantity: roundNumber(item.day.quantity), amount: roundNumber(item.day.amount) },
+                week: { quantity: roundNumber(item.week.quantity), amount: roundNumber(item.week.amount) },
+                twoWeeks: { quantity: roundNumber(item.twoWeeks.quantity), amount: roundNumber(item.twoWeeks.amount) },
+                month: { quantity: roundNumber(item.month.quantity), amount: roundNumber(item.month.amount) }
+            }))
+            .filter(item => item.month.amount > 0 || item.twoWeeks.amount > 0 || item.week.amount > 0 || item.day.amount > 0)
+            .sort((a, b) => b.month.amount - a.month.amount || a.name.localeCompare(b.name));
+
+        return {
+            reportDate,
+            ranges,
+            totals: {
+                day: { quantity: roundNumber(totals.day.quantity), amount: roundNumber(totals.day.amount) },
+                week: { quantity: roundNumber(totals.week.quantity), amount: roundNumber(totals.week.amount) },
+                twoWeeks: { quantity: roundNumber(totals.twoWeeks.quantity), amount: roundNumber(totals.twoWeeks.amount) },
+                month: { quantity: roundNumber(totals.month.quantity), amount: roundNumber(totals.month.amount) }
+            },
+            items
+        };
+    } catch (e) {
+        console.error(e);
+        return {
+            reportDate: null,
+            ranges: null,
+            totals: {
+                day: emptyPeriod(),
+                week: emptyPeriod(),
+                twoWeeks: emptyPeriod(),
+                month: emptyPeriod()
+            },
+            items: []
+        };
     }
 }
 
