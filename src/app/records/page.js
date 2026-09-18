@@ -5,6 +5,8 @@ export const metadata = {
     title: "تمام ریکارڈز - Malik Sajawal Refreshment",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function RecordsPage() {
     const entries = await getEntries();
 

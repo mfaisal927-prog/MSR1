@@ -5,6 +5,8 @@ export const metadata = {
     title: "اس ماہ کے ریکارڈز - Malik Sajawal Refreshment",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function MonthlyRecordsPage({ params }) {
     const resolvedParams = await params;
 
