@@ -280,7 +280,7 @@ export default function ClientLayout({ children }) {
                     </div>
                 </header>
 
-                <main className="content-pad" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <main className="content-pad">
                     {children}
                 </main>
 
@@ -296,15 +296,15 @@ export default function ClientLayout({ children }) {
                     overflow: hidden;
                 }
                 .sidebar {
-                    width: 260px;
-                    background-color: var(--card-bg);
+                    width: 272px;
+                    background-color: var(--surface-raised);
                     border-left: 1px solid var(--border);
                     display: flex;
                     flex-direction: column;
                     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                     z-index: 100;
-                    box-shadow: -4px 0 15px rgba(0,0,0,0.03); 
-                    padding: 16px;
+                    box-shadow: none;
+                    padding: 14px;
                     box-sizing: border-box;
                 }
                 [data-theme='dark'] .sidebar {
@@ -312,7 +312,7 @@ export default function ClientLayout({ children }) {
                     border-left-color: #1e293b;
                 }
                 .sidebar.collapsed {
-                    width: 88px;
+                    width: 82px;
                 }
                 .sidebar-header {
                     padding-bottom: 16px;
@@ -332,9 +332,9 @@ export default function ClientLayout({ children }) {
                 .sidebar-logo {
                     min-width: 40px;
                     height: 40px;
-                    background: linear-gradient(135deg, var(--primary), var(--accent));
+                    background: var(--primary);
                     color: white;
-                    border-radius: 12px;
+                    border-radius: 8px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -409,7 +409,7 @@ export default function ClientLayout({ children }) {
                     border: none;
                     width: 100%;
                     box-sizing: border-box;
-                    border-radius: 12px;
+                    border-radius: 8px;
                     text-align: right;
                     cursor: pointer;
                     font-family: inherit;
@@ -429,13 +429,12 @@ export default function ClientLayout({ children }) {
                 .sidebar-link:hover {
                     background-color: var(--item-bg, var(--bg-color));
                     color: var(--item-color, var(--primary));
-                    transform: translateX(language === 'ur' ? -4px : 4px);
                 }
                 html[dir="rtl"] .sidebar-link:hover {
-                    transform: translateX(-4px);
+                    transform: translateX(-2px);
                 }
                 html[dir="ltr"] .sidebar-link:hover {
-                    transform: translateX(4px);
+                    transform: translateX(2px);
                 }
                 .sidebar-link:hover .sidebar-icon {
                     color: var(--item-color, var(--primary));
@@ -485,20 +484,27 @@ export default function ClientLayout({ children }) {
                     flex: 1;
                     display: flex;
                     flex-direction: column;
+                    min-width: 0;
                     height: 100vh;
                     overflow-y: auto;
+                    overflow-x: hidden;
                     background-color: var(--bg-color);
                     transition: background-color 0.3s;
+                }
+                .content-pad {
+                    flex: 0 0 auto;
+                    min-width: 0;
+                    width: 100%;
+                    overflow-x: hidden;
                 }
                 .saas-header {
                     position: sticky;
                     top: 0;
-                    height: 68px;
-                    background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.98));
+                    height: 72px;
+                    background: color-mix(in srgb, var(--card-bg) 94%, transparent);
                     backdrop-filter: blur(10px);
-                    border-bottom: 2px solid transparent;
-                    border-image: linear-gradient(90deg, var(--primary), var(--accent), #0ea5e9) 1;
-                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0,0,0,0.02);
+                    border-bottom: 1px solid var(--border);
+                    box-shadow: none;
                     z-index: 50;
                     display: flex;
                     align-items: center;
@@ -506,8 +512,8 @@ export default function ClientLayout({ children }) {
                     transition: all 0.3s ease;
                 }
                 [data-theme='dark'] .saas-header {
-                    background: linear-gradient(135deg, rgba(30,41,59,0.95), rgba(15,23,42,0.98));
-                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+                    background: color-mix(in srgb, var(--card-bg) 94%, transparent);
+                    box-shadow: none;
                 }
                 .header-container {
                     width: 100%;
@@ -516,6 +522,7 @@ export default function ClientLayout({ children }) {
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
+                    min-width: 0;
                     height: 100%;
                 }
                 .header-brand-section {
@@ -537,16 +544,16 @@ export default function ClientLayout({ children }) {
                 .header-logo-icon {
                     width: 44px;
                     height: 44px;
-                    border-radius: 14px;
-                    background: linear-gradient(135deg, var(--primary), var(--accent));
+                    border-radius: 8px;
+                    background: var(--primary);
                     color: white;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     font-weight: 800;
                     font-size: 18px;
-                    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-                    border: 2px solid rgba(255,255,255,0.2);
+                    box-shadow: var(--shadow-sm);
+                    border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border));
                 }
                 .header-brand-text {
                     display: flex;
@@ -555,11 +562,9 @@ export default function ClientLayout({ children }) {
                 .header-brand-title {
                     font-size: 1.2rem;
                     font-weight: 800;
-                    background: linear-gradient(90deg, var(--primary), var(--accent));
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: transparent;
+                    color: var(--primary);
                     line-height: 1.2;
-                    letter-spacing: -0.01em;
+                    letter-spacing: 0;
                 }
                 .header-brand-subtitle {
                     font-size: 0.75rem;
@@ -567,7 +572,7 @@ export default function ClientLayout({ children }) {
                     font-weight: 600;
                     margin-top: 2px;
                     text-transform: uppercase;
-                    letter-spacing: 0.05em;
+                    letter-spacing: 0;
                 }
                 .header-nav-section {
                     display: flex;
@@ -581,7 +586,7 @@ export default function ClientLayout({ children }) {
                     font-weight: 600;
                     color: var(--text-muted);
                     padding: 8px 18px;
-                    border-radius: 20px;
+                    border-radius: 8px;
                     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                     text-decoration: none;
                     position: relative;
@@ -589,12 +594,12 @@ export default function ClientLayout({ children }) {
                 .saas-nav-link:hover {
                     color: var(--text-main);
                     background-color: var(--bg-color);
-                    transform: translateY(-2px);
+                    transform: translateY(-1px);
                 }
                 .saas-nav-link.active {
                     color: var(--primary);
-                    background-color: rgba(16, 185, 129, 0.1);
-                    box-shadow: inset 0 -2px 0 var(--primary);
+                    background-color: color-mix(in srgb, var(--accent) 12%, transparent);
+                    box-shadow: inset 0 -2px 0 var(--accent);
                 }
                 .header-actions-section {
                     display: flex;
@@ -613,8 +618,8 @@ export default function ClientLayout({ children }) {
                 }
                 .saas-select {
                     appearance: none;
-                    background-color: var(--bg-color);
-                    border: 1px solid transparent;
+                    background-color: var(--surface-raised);
+                    border: 1px solid var(--border);
                     border-radius: 8px;
                     padding: 8px 30px 8px 14px;
                     color: var(--text-main);
@@ -645,7 +650,7 @@ export default function ClientLayout({ children }) {
                     background-color: transparent;
                     border: 1px solid var(--border);
                     padding: 6px 14px;
-                    border-radius: 20px;
+                    border-radius: 8px;
                     color: var(--text-main);
                     font-weight: 600;
                     font-size: 0.85rem;
@@ -662,7 +667,7 @@ export default function ClientLayout({ children }) {
                     justify-content: center;
                     width: 38px;
                     height: 38px;
-                    border-radius: 50%;
+                    border-radius: 8px;
                     background-color: transparent;
                     color: var(--text-muted);
                     border: none;
@@ -673,11 +678,11 @@ export default function ClientLayout({ children }) {
                     background-color: var(--bg-color);
                     color: var(--text-main);
                 }
-                @media (min-width: 769px) {
+                @media (min-width: 1181px) {
                     .desktop-only { display: flex; }
                     .mobile-only { display: none; }
                 }
-                @media (max-width: 768px) {
+                @media (max-width: 1180px) {
                     .sidebar {
                         width: 280px;
                         position: fixed;
@@ -704,7 +709,7 @@ export default function ClientLayout({ children }) {
                     z-index: 999;
                     backdrop-filter: blur(2px);
                 }
-                @media (max-width: 768px) {
+                @media (max-width: 1180px) {
                     .app-layout.sidebar-open .sidebar-overlay {
                         display: block;
                     }

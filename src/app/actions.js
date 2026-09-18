@@ -815,3 +815,33 @@ export async function getLast6MonthsSummary() {
         return [];
     }
 }
+
+export async function getLatestDashboardEntry() {
+    try {
+        const entry = await prisma.dailyEntry.findFirst({
+            orderBy: { date: "desc" },
+            select: {
+                date: true,
+                sale_total: true,
+                purchase_total: true,
+                expense_total: true,
+                profit_total: true,
+                extra_expense_total: true,
+            },
+        });
+
+        return entry
+            ? {
+                date: entry.date,
+                sale_total: entry.sale_total,
+                purchase_total: entry.purchase_total,
+                expense_total: entry.expense_total,
+                profit_total: entry.profit_total,
+                extra_expense_total: entry.extra_expense_total,
+            }
+            : null;
+    } catch (error) {
+        console.error("Error fetching latest dashboard entry:", error);
+        return null;
+    }
+}

@@ -1,4 +1,4 @@
-import { getLast6MonthsSummary } from "../actions";
+import { getLast6MonthsSummary, getLatestDashboardEntry } from "../actions";
 import DashboardClient from "./DashboardClient";
 
 export const metadata = {
@@ -8,9 +8,12 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-    const sixMonthsData = await getLast6MonthsSummary();
+    const [sixMonthsData, latestEntry] = await Promise.all([
+        getLast6MonthsSummary(),
+        getLatestDashboardEntry(),
+    ]);
 
     return (
-        <DashboardClient sixMonthsData={sixMonthsData} />
+        <DashboardClient sixMonthsData={sixMonthsData} latestEntry={latestEntry} />
     );
 }
