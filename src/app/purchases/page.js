@@ -11,11 +11,12 @@ import {
     Store,
     WalletCards
 } from "lucide-react";
+import { formatOMR } from "../../lib/formatMoney";
 
 export const dynamic = 'force-dynamic';
 
 function formatAmount(value) {
-    return Number(value || 0).toFixed(2);
+    return formatOMR(value);
 }
 
 function formatQuantity(value) {
@@ -192,7 +193,7 @@ export default async function PurchasesDashboardPage() {
                                         <td style={{ direction: 'ltr', textAlign: 'right' }}>{entry.date}</td>
                                         <td>{entry.lines ? entry.lines.length : 0} آئٹمز</td>
                                         <td style={{ fontWeight: 'bold', color: 'var(--danger)' }}>
-                                            {entry.lines ? entry.lines.reduce((s, line) => s + line.total_price, 0).toLocaleString() : 0}
+                                            {formatAmount(entry.lines ? entry.lines.reduce((s, line) => s + line.total_price, 0) : 0)}
                                         </td>
                                         <td>
                                             <div className="purchase-history-lines">

@@ -11,6 +11,7 @@ import {
     Legend,
     ResponsiveContainer
 } from "recharts";
+import { formatOMR } from "../../lib/formatMoney";
 
 export default function ReportsClient({ entries }) {
     const router = useRouter();
@@ -94,7 +95,7 @@ export default function ReportsClient({ entries }) {
                     <div className="card-title">کل سیل</div>
                     <div className="card-value">
                         <span className="card-currency">OMR</span>
-                        {totals.sales.toFixed(2)}
+                        {formatOMR(totals.sales)}
                     </div>
                 </div>
 
@@ -102,7 +103,7 @@ export default function ReportsClient({ entries }) {
                     <div className="card-title">کل خریداری</div>
                     <div className="card-value">
                         <span className="card-currency">OMR</span>
-                        {totals.purchases.toFixed(2)}
+                        {formatOMR(totals.purchases)}
                     </div>
                 </div>
 
@@ -110,7 +111,7 @@ export default function ReportsClient({ entries }) {
                     <div className="card-title">کل اخراجات</div>
                     <div className="card-value">
                         <span className="card-currency">OMR</span>
-                        {totals.expenses.toFixed(2)}
+                        {formatOMR(totals.expenses)}
                     </div>
                 </div>
 
@@ -118,7 +119,7 @@ export default function ReportsClient({ entries }) {
                     <div className="card-title">خالص منافع</div>
                     <div className={`card-value ${totals.profit >= 0 ? 'profit-positive' : 'profit-negative'}`}>
                         <span className="card-currency">OMR</span>
-                        {totals.profit.toFixed(2)}
+                        {formatOMR(totals.profit)}
                     </div>
                 </div>
             </div>
@@ -140,6 +141,7 @@ export default function ReportsClient({ entries }) {
                         <XAxis dataKey="name" />
                         <YAxis />
                         <Tooltip
+                            formatter={(value) => `${formatOMR(value)} OMR`}
                             cursor={{ fill: 'rgba(0,0,0,0.05)' }}
                             contentStyle={{ textAlign: 'right', direction: 'rtl', borderRadius: '8px' }}
                         />

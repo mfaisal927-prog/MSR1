@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { deleteEntry } from "../actions";
+import { formatOMR } from "../../lib/formatMoney";
 
 export default function RecordsClient({ initialEntries, backPath = "/dashboard" }) {
     const router = useRouter();
@@ -68,7 +69,7 @@ export default function RecordsClient({ initialEntries, backPath = "/dashboard" 
         const rows = filteredEntries.map(entry => {
             const dateStr = entry.date;
             const dayStr = new Date(entry.date).toLocaleDateString('ur-PK', { weekday: 'long' }).replace(/,/g, '');
-            return `${dateStr},${dayStr},${entry.sale_total},${entry.purchase_total},${entry.expense_total},${entry.profit_total}`;
+            return `${dateStr},${dayStr},${formatOMR(entry.sale_total)},${formatOMR(entry.purchase_total)},${formatOMR(entry.expense_total)},${formatOMR(entry.profit_total)}`;
         }).join("\n");
 
         const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + encodeURIComponent(headers + rows);
@@ -226,24 +227,24 @@ export default function RecordsClient({ initialEntries, backPath = "/dashboard" 
                                     <td style={{ fontWeight: '600' }}>{new Date(entry.date).toLocaleDateString('ur-PK')}</td>
                                     <td>{new Date(entry.date).toLocaleDateString('ur-PK', { weekday: 'long' })}</td>
                                     <td>
-                                        <span className="numeric-input" style={{ float: 'left' }}>{entry.sale_total} OMR</span>
+                                        <span className="numeric-input" style={{ float: 'left' }}>{formatOMR(entry.sale_total)} OMR</span>
                                     </td>
                                     <td>
-                                        <span className="numeric-input" style={{ float: 'left' }}>{entry.purchase_total} OMR</span>
+                                        <span className="numeric-input" style={{ float: 'left' }}>{formatOMR(entry.purchase_total)} OMR</span>
                                     </td>
                                     <td>
-                                        <span className="numeric-input" style={{ float: 'left' }}>{entry.expense_total} OMR</span>
+                                        <span className="numeric-input" style={{ float: 'left' }}>{formatOMR(entry.expense_total)} OMR</span>
                                     </td>
                                     <td style={{ fontWeight: '700' }}>
                                         <span
                                             className={`numeric-input ${entry.profit_total >= 0 ? 'profit-positive' : 'profit-negative'}`}
                                             style={{ float: 'left' }}
                                         >
-                                            {entry.profit_total} OMR
+                                            {formatOMR(entry.profit_total)} OMR
                                         </span>
                                     </td>
                                     <td>
-                                        <span className="numeric-input" style={{ float: 'left', color: '#ea580c' }}>{entry.extra_expense_total || 0} OMR</span>
+                                        <span className="numeric-input" style={{ float: 'left', color: '#ea580c' }}>{formatOMR(entry.extra_expense_total)} OMR</span>
                                     </td>
                                     <td style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
                                         {entry.extra_expense_reason || "-"}
@@ -276,20 +277,20 @@ export default function RecordsClient({ initialEntries, backPath = "/dashboard" 
                             <tr style={{ backgroundColor: '#f1f5f9', fontWeight: 'bold' }}>
                                 <td colSpan="2" style={{ textAlign: 'center' }}>کل میزان</td>
                                 <td>
-                                    <span className="numeric-input" style={{ float: 'left', fontWeight: 'bold' }}>{totals.sale.toFixed(2)} OMR</span>
+                                    <span className="numeric-input" style={{ float: 'left', fontWeight: 'bold' }}>{formatOMR(totals.sale)} OMR</span>
                                 </td>
                                 <td>
-                                    <span className="numeric-input" style={{ float: 'left', fontWeight: 'bold' }}>{totals.purchase.toFixed(2)} OMR</span>
+                                    <span className="numeric-input" style={{ float: 'left', fontWeight: 'bold' }}>{formatOMR(totals.purchase)} OMR</span>
                                 </td>
                                 <td>
-                                    <span className="numeric-input" style={{ float: 'left', fontWeight: 'bold' }}>{totals.expense.toFixed(2)} OMR</span>
+                                    <span className="numeric-input" style={{ float: 'left', fontWeight: 'bold' }}>{formatOMR(totals.expense)} OMR</span>
                                 </td>
                                 <td>
                                     <span
                                         className={`numeric-input ${totals.profit >= 0 ? 'profit-positive' : 'profit-negative'}`}
                                         style={{ float: 'left', fontWeight: 'bold' }}
                                     >
-                                        {totals.profit.toFixed(2)} OMR
+                                        {formatOMR(totals.profit)} OMR
                                     </span>
                                 </td>
                                 <td></td>

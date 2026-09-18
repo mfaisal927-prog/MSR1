@@ -6,6 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { Download, FileText, Plus, List, Upload, ClipboardPaste } from 'lucide-react';
 import jsPDF from "jspdf";
 import "jspdf-autotable";
+import { formatOMR } from "../../../../lib/formatMoney";
 
 export default function MonthlyDashboardClient({ year, month, totals, prevMonthProfit, initialSettings, initialMonthlyExpenses = [], entries = [] }) {
     const router = useRouter();
@@ -194,7 +195,7 @@ export default function MonthlyDashboardClient({ year, month, totals, prevMonthP
         const rows = entries.map(entry => {
             const dateStr = entry.date;
             const dayStr = entry.day_text || new Date(entry.date).toLocaleDateString('ur-PK', { weekday: 'long' }).replace(/,/g, '');
-            return `${dateStr},${dayStr},${entry.sale_total},${entry.purchase_total},${entry.expense_total},${entry.profit_total}`;
+            return `${dateStr},${dayStr},${formatOMR(entry.sale_total)},${formatOMR(entry.purchase_total)},${formatOMR(entry.expense_total)},${formatOMR(entry.profit_total)}`;
         }).join("\n");
 
         const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + encodeURIComponent(headers + rows);
@@ -214,11 +215,11 @@ export default function MonthlyDashboardClient({ year, month, totals, prevMonthP
         doc.text(`Monthly Report - ${year}/${month}`, 40, 40);
 
         doc.setFontSize(12);
-        doc.text(`Total Sale: ${totals.sales} OMR`, 40, 70);
-        doc.text(`Total Purchase: ${totals.purchases} OMR`, 40, 90);
-        doc.text(`Total Expense: ${displayExpenses} OMR`, 40, 110);
-        doc.text(`Net Profit: ${displayProfit} OMR`, 40, 130);
-        doc.text(`Monthly Expenses: ${monthlyExpenseTotal} OMR`, 40, 150);
+        doc.text(`Total Sale: ${formatOMR(totals.sales)} OMR`, 40, 70);
+        doc.text(`Total Purchase: ${formatOMR(totals.purchases)} OMR`, 40, 90);
+        doc.text(`Total Expense: ${formatOMR(displayExpenses)} OMR`, 40, 110);
+        doc.text(`Net Profit: ${formatOMR(displayProfit)} OMR`, 40, 130);
+        doc.text(`Monthly Expenses: ${formatOMR(monthlyExpenseTotal)} OMR`, 40, 150);
 
         const tableColumn = ["Date", "Day", "Sale", "Purchase", "Expense", "Profit"];
         const tableRows = [];
@@ -227,10 +228,10 @@ export default function MonthlyDashboardClient({ year, month, totals, prevMonthP
             const eData = [
                 e.date,
                 e.day_text || "-",
-                e.sale_total,
-                e.purchase_total,
-                e.expense_total,
-                e.profit_total
+                formatOMR(e.sale_total),
+                formatOMR(e.purchase_total),
+                formatOMR(e.expense_total),
+                formatOMR(e.profit_total)
             ];
             tableRows.push(eData);
         });
@@ -307,24 +308,24 @@ export default function MonthlyDashboardClient({ year, month, totals, prevMonthP
                 <div className="summary-grid">
                     <div className="summary-card">
                         <div className="card-title">اس ماہ کی کل سیل</div>
-                        <div className="card-value"><span className="card-currency">OMR</span>{totals.sales.toFixed(2)}</div>
+                        <div className="card-value"><span className="card-currency">OMR</span>{formatOMR(totals.sales)}</div>
                     </div>
                     <div className="summary-card">
                         <div className="card-title">کل خریداری</div>
-                        <div className="card-value"><span className="card-currency">OMR</span>{totals.purchases.toFixed(2)}</div>
+                        <div className="card-value"><span className="card-currency">OMR</span>{formatOMR(totals.purchases)}</div>
                     </div>
                     <div className="summary-card">
                         <div className="card-title">{isOptionOn ? "ایڈجسٹڈ اخراجات" : "کل اخراجات"}</div>
-                        <div className="card-value"><span className="card-currency">OMR</span>{displayExpenses.toFixed(2)}</div>
+                        <div className="card-value"><span className="card-currency">OMR</span>{formatOMR(displayExpenses)}</div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                            روزانہ: {totals.expenses.toFixed(2)} + ماہانہ: {monthlyExpenseTotal.toFixed(2)}
-                            {isOptionOn ? ` + پچھلا منافع: ${prevMonthProfit.toFixed(2)}` : ""}
+                            روزانہ: {formatOMR(totals.expenses)} + ماہانہ: {formatOMR(monthlyExpenseTotal)}
+                            {isOptionOn ? ` + پچھلا منافع: ${formatOMR(prevMonthProfit)}` : ""}
                         </div>
                     </div>
                     <div className="summary-card">
                         <div className="card-title">{isOptionOn ? "ایڈجسٹڈ منافع" : "خالص منافع"}</div>
-                        <div className={`card-value ${displayProfit >= 0 ? 'profit-positive' : 'profit-negative'}`}><span className="card-currency">OMR</span>{displayProfit.toFixed(2)}</div>
-                        {isOptionOn && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>اصل منافع: {totals.profit.toFixed(2)}</div>}
+                        <div className={`card-value ${displayProfit >= 0 ? 'profit-positive' : 'profit-negative'}`}><span className="card-currency">OMR</span>{formatOMR(displayProfit)}</div>
+                        {isOptionOn && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>اصل منافع: {formatOMR(totals.profit)}</div>}
                     </div>
                 </div>
 
@@ -332,11 +333,11 @@ export default function MonthlyDashboardClient({ year, month, totals, prevMonthP
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
                         <div className="summary-card" style={{ borderColor: '#f97316', backgroundColor: '#fff7ed', maxWidth: '300px', padding: '1rem 1.25rem' }}>
                             <div className="card-title" style={{ color: '#c2410c' }}>اضافی اخراجات (پرسنل)</div>
-                            <div className="card-value" style={{ fontSize: '1.5rem', color: '#ea580c' }}><span className="card-currency" style={{ color: '#ea580c' }}>OMR</span>{totalExtraExpense.toFixed(2)}</div>
+                            <div className="card-value" style={{ fontSize: '1.5rem', color: '#ea580c' }}><span className="card-currency" style={{ color: '#ea580c' }}>OMR</span>{formatOMR(totalExtraExpense)}</div>
                         </div>
                         <div className="summary-card" style={{ borderColor: '#0ea5e9', backgroundColor: '#eff6ff', maxWidth: '300px', padding: '1rem 1.25rem' }}>
                             <div className="card-title" style={{ color: '#0369a1' }}>ماہانہ اخراجات</div>
-                            <div className="card-value" style={{ fontSize: '1.5rem', color: '#0284c7' }}><span className="card-currency" style={{ color: '#0284c7' }}>OMR</span>{monthlyExpenseTotal.toFixed(2)}</div>
+                            <div className="card-value" style={{ fontSize: '1.5rem', color: '#0284c7' }}><span className="card-currency" style={{ color: '#0284c7' }}>OMR</span>{formatOMR(monthlyExpenseTotal)}</div>
                         </div>
                     </div>
                 </div>
@@ -367,10 +368,10 @@ export default function MonthlyDashboardClient({ year, month, totals, prevMonthP
                             <input
                                 id="monthly-expense-amount"
                                 type="number"
-                                step="any"
+                                step="0.001"
                                 min="0"
                                 className="form-input numeric-input"
-                                placeholder="0"
+                                placeholder="0.000"
                                 value={expenseForm.amount}
                                 onChange={(e) => handleExpenseFormChange("amount", e.target.value)}
                                 required
@@ -411,7 +412,7 @@ export default function MonthlyDashboardClient({ year, month, totals, prevMonthP
                                         <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{expense.title}</div>
                                         {expense.notes && <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{expense.notes}</div>}
                                     </div>
-                                    <div style={{ direction: 'ltr', fontWeight: 800, color: '#0369a1' }}>OMR {expense.amount.toFixed(2)}</div>
+                                    <div style={{ direction: 'ltr', fontWeight: 800, color: '#0369a1' }}>OMR {formatOMR(expense.amount)}</div>
                                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                                         <button type="button" className="btn-action" style={{ width: 'auto', padding: '0.45rem 0.8rem', fontSize: '0.85rem' }} onClick={() => handleEditExpense(expense)} disabled={expenseSubmitting}>
                                             ترمیم
@@ -432,7 +433,7 @@ export default function MonthlyDashboardClient({ year, month, totals, prevMonthP
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                         <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '1.05rem', fontWeight: '500' }}>
                             <span style={{ color: 'var(--accent)' }}>✦</span>
-                            <span>اوسطاً روزانہ کی سیل <strong>{avgDailySale.toFixed(1)} OMR</strong> رہی ہے۔</span>
+                            <span>اوسطاً روزانہ کی سیل <strong>{formatOMR(avgDailySale)} OMR</strong> رہی ہے۔</span>
                         </li>
                         <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '1.05rem', fontWeight: '500' }}>
                             <span style={{ color: 'var(--accent)' }}>✦</span>
@@ -459,7 +460,7 @@ export default function MonthlyDashboardClient({ year, month, totals, prevMonthP
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
                                     <XAxis dataKey="dateStr" tick={{ fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
                                     <YAxis tick={{ fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-                                    <Tooltip contentStyle={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-main)', borderRadius: '8px', border: '1px solid var(--border)' }} />
+                                    <Tooltip formatter={(value) => `${formatOMR(value)} OMR`} contentStyle={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-main)', borderRadius: '8px', border: '1px solid var(--border)' }} />
                                     <Legend />
                                     <Line type="monotone" dataKey="سیل" stroke="var(--primary)" strokeWidth={3} dot={false} />
                                     <Line type="monotone" dataKey="منافع" stroke="var(--accent)" strokeWidth={3} dot={false} />
@@ -476,7 +477,7 @@ export default function MonthlyDashboardClient({ year, month, totals, prevMonthP
                                 <BarChart data={barChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
                                     <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-                                    <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-main)', borderRadius: '8px', border: '1px solid var(--border)' }} />
+                                    <Tooltip formatter={(value) => `${formatOMR(value)} OMR`} cursor={{ fill: 'transparent' }} contentStyle={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-main)', borderRadius: '8px', border: '1px solid var(--border)' }} />
                                     <Bar dataKey="sum" radius={[4, 4, 0, 0]} barSize={40} />
                                 </BarChart>
                             </ResponsiveContainer>
@@ -491,7 +492,7 @@ export default function MonthlyDashboardClient({ year, month, totals, prevMonthP
                                 <BarChart data={weeklyChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
                                     <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-                                    <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-main)', borderRadius: '8px', border: '1px solid var(--border)' }} />
+                                    <Tooltip formatter={(value) => `${formatOMR(value)} OMR`} cursor={{ fill: 'transparent' }} contentStyle={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-main)', borderRadius: '8px', border: '1px solid var(--border)' }} />
                                     <Bar dataKey="منافع" fill="var(--accent)" radius={[4, 4, 0, 0]} barSize={40} />
                                 </BarChart>
                             </ResponsiveContainer>

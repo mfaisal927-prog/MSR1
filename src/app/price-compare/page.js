@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getPriceComparison } from "../purchaseActions";
 import { Search, MapPin, TrendingDown, Clock, Info } from "lucide-react";
+import { formatOMR } from "../../lib/formatMoney";
 
 export const dynamic = 'force-dynamic';
 
@@ -92,7 +93,7 @@ export default async function PriceComparePage() {
                                                 </div>
                                                 <div style={{ direction: 'ltr', textAlign: 'right' }}>
                                                     <span style={{ fontSize: '1.4rem', fontWeight: '900', color: isCheapest ? '#10b981' : 'var(--danger)' }}>
-                                                        {sp.unitPrice.toFixed(2)} OMR
+                                                        {formatOMR(sp.unitPrice)} OMR
                                                     </span>
                                                     <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '4px' }}>
                                                         / {sp.unit}

@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createEntry } from "../actions";
+import { formatOMR } from "../../lib/formatMoney";
 
 function DailyEntryForm() {
     const router = useRouter();
@@ -67,8 +68,7 @@ function DailyEntryForm() {
     };
 
     const formatAmount = (value) => {
-        const number = parseFloat(value) || 0;
-        return number.toFixed(3).replace(/\.?0+$/, "");
+        return formatOMR(value);
     };
 
     const finishAndRedirect = (message) => {
@@ -267,10 +267,10 @@ function DailyEntryForm() {
                         <input
                             id="sales"
                             type="number"
-                            step="any"
+                            step="0.001"
                             min="0"
                             className="form-input numeric-input"
-                            placeholder="0.00"
+                            placeholder="0.000"
                             value={sales}
                             onChange={(e) => {
                                 setSales(e.target.value);
@@ -287,10 +287,10 @@ function DailyEntryForm() {
                         <input
                             id="purchases"
                             type="number"
-                            step="any"
+                            step="0.001"
                             min="0"
                             className="form-input numeric-input"
-                            placeholder="0.00"
+                            placeholder="0.000"
                             value={purchases}
                             onChange={(e) => {
                                 setPurchases(e.target.value);
@@ -307,10 +307,10 @@ function DailyEntryForm() {
                         <input
                             id="expenses"
                             type="number"
-                            step="any"
+                            step="0.001"
                             min="0"
                             className="form-input numeric-input"
-                            placeholder="0.00"
+                            placeholder="0.000"
                             value={expenses}
                             onChange={(e) => {
                                 setExpenses(e.target.value);
@@ -329,7 +329,7 @@ function DailyEntryForm() {
                             suppressHydrationWarning
                         >
                             <span className="card-currency">OMR</span>
-                            <span className="profit-value">{profit.toFixed(2)}</span>
+                            <span className="profit-value">{formatOMR(profit)}</span>
                         </div>
                     </div>
 

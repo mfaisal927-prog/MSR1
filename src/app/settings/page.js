@@ -251,7 +251,7 @@ export default function SettingsPage() {
                             <p>ملک سجاول ریفریشمنٹ کا اکاؤنٹنگ اور خریداری کا جدید نظام آپ کی سہولت کے لیے بنایا گیا ہے۔</p>
                             <p style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '15px' }}>
                                 <strong>کل خریداری:</strong>
-                                <span style={{ color: 'var(--danger)', fontSize: '1.5em', fontWeight: 'bold' }}>1,450 OMR</span>
+                                <span style={{ color: 'var(--danger)', fontSize: '1.5em', fontWeight: 'bold' }}>1.450 OMR</span>
                             </p>
                         </div>
                     ) : (
@@ -260,7 +260,7 @@ export default function SettingsPage() {
                             <p>Malik Sajawal Refreshment's modern accounting and purchasing system is built for your convenience.</p>
                             <p style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '15px' }}>
                                 <strong>Total Purchase:</strong>
-                                <span style={{ color: 'var(--danger)', fontSize: '1.5em', fontWeight: 'bold' }}>1,450 OMR</span>
+                                <span style={{ color: 'var(--danger)', fontSize: '1.5em', fontWeight: 'bold' }}>1.450 OMR</span>
                             </p>
                         </div>
                     )}

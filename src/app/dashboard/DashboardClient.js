@@ -15,6 +15,7 @@ import {
     TrendingUp,
     Wallet,
 } from "lucide-react";
+import { formatOMR } from "../../lib/formatMoney";
 
 const monthLabels = {
     ur: {
@@ -113,7 +114,7 @@ const copy = {
 };
 
 function formatAmount(value) {
-    return Number(value || 0).toFixed(2);
+    return formatOMR(value);
 }
 
 function formatDateLabel(dateValue, language) {

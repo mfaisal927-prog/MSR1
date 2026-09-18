@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { PlusCircle, Plus, Save, Trash2, ShoppingCart, Info } from "lucide-react";
 import { getItems, getStores, addPurchaseEntry, getItemPriceIntelligence, addStore, addItem } from "../../purchaseActions";
+import { formatOMR } from "../../../lib/formatMoney";
 
 export default function NewPurchasePage() {
     const router = useRouter();
@@ -235,7 +236,7 @@ export default function NewPurchasePage() {
                                         if (intel && line.storeId) {
                                             const storeData = intel.lastByStore[line.storeId];
                                             if (storeData) {
-                                                storeHint = `پچھلی بار یہاں سے: ${storeData.price} OMR (${storeData.date})`;
+                                                storeHint = `پچھلی بار یہاں سے: ${formatOMR(storeData.price)} OMR (${storeData.date})`;
 
                                                 // Calculate if current price is higher or lower
                                                 const currentPrice = parseFloat(line.unit_price) || 0;
@@ -253,7 +254,7 @@ export default function NewPurchasePage() {
                                         }
 
                                         if (intel && intel.lowestRecentPrice) {
-                                            lowestHint = `سب سے سستا: ${intel.lowestRecentPrice} OMR / ${intel.baseUnit}`;
+                                            lowestHint = `سب سے سستا: ${formatOMR(intel.lowestRecentPrice)} OMR / ${intel.baseUnit}`;
                                         }
 
                                         return (
@@ -324,7 +325,7 @@ export default function NewPurchasePage() {
                                                     </div>
                                                 </td>
                                                 <td style={{ verticalAlign: 'top', paddingTop: '10px' }}>
-                                                    <input type="number" step="0.001" className="form-input" value={line.total_price} readOnly style={{ direction: 'ltr', backgroundColor: '#f3f4f6', fontWeight: 'bold', padding: '8px' }} />
+                                                    <input type="number" step="0.001" className="form-input" value={formatOMR(line.total_price)} readOnly style={{ direction: 'ltr', backgroundColor: '#f3f4f6', fontWeight: 'bold', padding: '8px' }} />
                                                 </td>
                                                 <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: '10px' }}>
                                                     <button type="button" className="icon-btn" style={{ color: 'var(--danger)' }} onClick={() => removeLine(line.id)} disabled={lines.length === 1}>
@@ -364,7 +365,7 @@ export default function NewPurchasePage() {
                         <div style={{ fontSize: '1.2rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <strong style={{ marginLeft: '10px' }}>کل خریداری:</strong>
                             <span style={{ fontSize: '1.6rem', fontWeight: 'bold', color: 'var(--danger)', direction: 'ltr', display: 'inline-block' }}>
-                                {calculateGrandTotal().toLocaleString()} OMR
+                                {formatOMR(calculateGrandTotal())} OMR
                             </span>
                         </div>
                         <button type="submit" className="btn-submit" disabled={isSubmitting} style={{ width: 'auto', padding: '12px 40px', fontSize: '1.1rem', borderRadius: '30px' }}>

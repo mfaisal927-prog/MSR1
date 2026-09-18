@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { getEntryByDate, deleteEntry } from "../actions";
+import { formatOMR } from "../../lib/formatMoney";
 
 export default function DailyRecordClient() {
     const router = useRouter();
@@ -94,19 +95,19 @@ export default function DailyRecordClient() {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem' }}>
                                         <span style={{ color: 'var(--text-muted)' }}>سیل:</span>
-                                        <span className="numeric-input" style={{ fontWeight: 'bold' }}>{entry.sale_total.toFixed(2)} OMR</span>
+                                        <span className="numeric-input" style={{ fontWeight: 'bold' }}>{formatOMR(entry.sale_total)} OMR</span>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem' }}>
                                         <span style={{ color: 'var(--text-muted)' }}>خریداری:</span>
-                                        <span className="numeric-input" style={{ fontWeight: 'bold' }}>{entry.purchase_total.toFixed(2)} OMR</span>
+                                        <span className="numeric-input" style={{ fontWeight: 'bold' }}>{formatOMR(entry.purchase_total)} OMR</span>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem' }}>
                                         <span style={{ color: 'var(--text-muted)' }}>اخراجات:</span>
-                                        <span className="numeric-input" style={{ fontWeight: 'bold' }}>{entry.expense_total.toFixed(2)} OMR</span>
+                                        <span className="numeric-input" style={{ fontWeight: 'bold' }}>{formatOMR(entry.expense_total)} OMR</span>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem' }}>
                                         <span style={{ color: 'var(--text-muted)' }}>اضافی اخراجات:</span>
-                                        <span className="numeric-input" style={{ fontWeight: 'bold', color: '#ea580c' }}>{(entry.extra_expense_total || 0).toFixed(2)} OMR</span>
+                                        <span className="numeric-input" style={{ fontWeight: 'bold', color: '#ea580c' }}>{formatOMR(entry.extra_expense_total)} OMR</span>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem' }}>
                                         <span style={{ color: 'var(--text-muted)' }}>مد (وجہ):</span>
@@ -115,7 +116,7 @@ export default function DailyRecordClient() {
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.25rem', borderTop: '1px dashed var(--border)', paddingTop: '1rem' }}>
                                         <span style={{ fontWeight: 'bold' }}>منافع:</span>
                                         <span className={`numeric-input ${entry.profit_total >= 0 ? 'profit-positive' : 'profit-negative'}`} style={{ fontWeight: 'bold' }}>
-                                            {entry.profit_total.toFixed(2)} OMR
+                                            {formatOMR(entry.profit_total)} OMR
                                         </span>
                                     </div>
                                 </div>

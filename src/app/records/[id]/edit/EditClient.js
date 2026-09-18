@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { updateEntry } from "../../../actions";
+import { formatOMR } from "../../../../lib/formatMoney";
 
 export default function EditClient({ entry }) {
     const router = useRouter();
@@ -75,7 +76,7 @@ export default function EditClient({ entry }) {
                     <input
                         id="sales"
                         type="number"
-                        step="any"
+                        step="0.001"
                         min="0"
                         className="form-input numeric-input"
                         value={sales}
@@ -89,7 +90,7 @@ export default function EditClient({ entry }) {
                     <input
                         id="purchases"
                         type="number"
-                        step="any"
+                        step="0.001"
                         min="0"
                         className="form-input numeric-input"
                         value={purchases}
@@ -103,7 +104,7 @@ export default function EditClient({ entry }) {
                     <input
                         id="expenses"
                         type="number"
-                        step="any"
+                        step="0.001"
                         min="0"
                         className="form-input numeric-input"
                         value={expenses}
@@ -116,7 +117,7 @@ export default function EditClient({ entry }) {
                     <div className="profit-label">موجودہ بچت/منافع:</div>
                     <div className={`profit-amount ${profit >= 0 ? 'profit-positive' : 'profit-negative'}`}>
                         <span className="card-currency">OMR</span>
-                        <span className="profit-value">{profit.toFixed(2)}</span>
+                        <span className="profit-value">{formatOMR(profit)}</span>
                     </div>
                 </div>
 
