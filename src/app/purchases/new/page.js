@@ -1,9 +1,87 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { PlusCircle, Plus, Save, Trash2, ShoppingCart, Info } from "lucide-react";
+import { ClipboardPaste, PlusCircle, Plus, Trash2, ShoppingCart, Info } from "lucide-react";
 import { getItems, getStores, addPurchaseEntry, getItemPriceIntelligence, addStore, addItem } from "../../purchaseActions";
 import { formatOMR } from "../../../lib/formatMoney";
+
+const digitMap = {
+    "۰": "0",
+    "۱": "1",
+    "۲": "2",
+    "۳": "3",
+    "۴": "4",
+    "۵": "5",
+    "۶": "6",
+    "۷": "7",
+    "۸": "8",
+    "۹": "9",
+    "٠": "0",
+    "١": "1",
+    "٢": "2",
+    "٣": "3",
+    "٤": "4",
+    "٥": "5",
+    "٦": "6",
+    "٧": "7",
+    "٨": "8",
+    "٩": "9"
+};
+
+function normalizeDigits(value) {
+    return String(value || "")
+        .replace(/[۰-۹٠-٩]/g, char => digitMap[char] || char)
+        .replace(/[٫،]/g, ".");
+}
+
+function normalizeName(value) {
+    return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function parseNumberCell(value) {
+    const normalized = normalizeDigits(value).replace(/,/g, "").trim();
+    if (!/^\d+(\.\d+)?$/.test(normalized)) return null;
+
+    const numberValue = Number(normalized);
+    return Number.isFinite(numberValue) && numberValue > 0 ? numberValue : null;
+}
+
+function isSeparatorCell(value) {
+    return /^:?-{2,}:?$/.test(String(value || "").replace(/\s/g, ""));
+}
+
+function parsePurchasePaste(text) {
+    return String(text || "")
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(Boolean)
+        .map(line => {
+            let cells = null;
+
+            if (line.includes("|")) {
+                cells = line.split("|").map(cell => cell.trim()).filter(Boolean);
+            } else {
+                const match = line.match(/^([0-9۰-۹٠-٩]+(?:[.,٫][0-9۰-۹٠-٩]+)?)\s+(.+)$/);
+                if (match) cells = [match[1], match[2]];
+            }
+
+            if (!cells || cells.length < 2 || cells.slice(0, 2).some(isSeparatorCell)) return null;
+
+            const value = parseNumberCell(cells[0]);
+            const name = normalizeName(cells.slice(1).join(" "));
+
+            if (value === null || !name) return null;
+            return { value, name };
+        })
+        .filter(Boolean);
+}
+
+function guessUnitForItemName(name, fallbackUnit) {
+    const normalized = normalizeName(name);
+    if (/آئل|آئل|oil|دودھ|جوس|شربت/i.test(normalized)) return "Liter";
+    if (/پانی|برگر|انڈے|انڈا|کھانا|گول گپے|کریٹ|بوتل|پیکٹ/i.test(normalized)) return "Pcs";
+    return fallbackUnit || "Kg";
+}
 
 export default function NewPurchasePage() {
     const router = useRouter();
@@ -17,6 +95,12 @@ export default function NewPurchasePage() {
     const [loading, setLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMsg, setErrorMsg] = useState("");
+    const [bulkText, setBulkText] = useState("");
+    const [bulkMode, setBulkMode] = useState("amount");
+    const [bulkDefaultStoreId, setBulkDefaultStoreId] = useState("");
+    const [bulkDefaultUnit, setBulkDefaultUnit] = useState("Kg");
+    const [bulkMessage, setBulkMessage] = useState("");
+    const [bulkImporting, setBulkImporting] = useState(false);
 
     const [lines, setLines] = useState([
         { id: Date.now(), itemId: "", itemName: "", storeId: "", quantity: 1, unit: "Kg", unit_price: 0, total_price: 0 }
@@ -48,6 +132,11 @@ export default function NewPurchasePage() {
         };
         fetchData();
     }, []);
+
+    const findItemByName = (name, availableItems = itemsList) => {
+        const normalized = normalizeName(name);
+        return availableItems.find(item => normalizeName(item.name) === normalized);
+    };
 
     const updateLine = async (id, field, value) => {
         let fetchIntelFor = null;
@@ -95,6 +184,98 @@ export default function NewPurchasePage() {
 
     const addLine = () => {
         setLines([...lines, { id: Date.now(), itemId: "", itemName: "", storeId: "", quantity: 1, unit: "Kg", unit_price: 0, total_price: 0 }]);
+    };
+
+    const handleBulkImport = async () => {
+        const parsedRows = parsePurchasePaste(bulkText);
+        setErrorMsg("");
+        setBulkMessage("");
+
+        if (parsedRows.length === 0) {
+            setErrorMsg("Paste list میں کوئی درست item نہیں ملا۔");
+            return;
+        }
+
+        setBulkImporting(true);
+
+        try {
+            const createdNames = [];
+            const importStartedAt = Date.now();
+            let availableItems = [...itemsList];
+            const createdItemCache = new Map();
+
+            const importedLines = [];
+            for (const row of parsedRows) {
+                const normalizedRowName = normalizeName(row.name);
+                let item = findItemByName(row.name, availableItems);
+
+                if (!item) {
+                    if (createdItemCache.has(normalizedRowName)) {
+                        item = createdItemCache.get(normalizedRowName);
+                    } else {
+                        const response = await addItem({
+                            name: row.name,
+                            category: "دیگر",
+                            default_unit: guessUnitForItemName(row.name, bulkDefaultUnit)
+                        });
+
+                        if (!response.success) {
+                            throw new Error(response.error || `${row.name} add نہیں ہو سکا۔`);
+                        }
+
+                        item = response.item;
+                        createdItemCache.set(normalizedRowName, item);
+                        availableItems = [...availableItems, item];
+                        createdNames.push(row.name);
+                    }
+                }
+
+                const unit = item.default_unit || guessUnitForItemName(row.name, bulkDefaultUnit);
+                const isAmountMode = bulkMode === "amount";
+                const quantity = isAmountMode ? 1 : row.value;
+                const unitPrice = isAmountMode ? row.value : 0;
+                const totalPrice = isAmountMode ? row.value : 0;
+
+                importedLines.push({
+                    id: importStartedAt + importedLines.length,
+                    itemId: item.id.toString(),
+                    itemName: item.name,
+                    storeId: bulkDefaultStoreId,
+                    quantity,
+                    unit,
+                    unit_price: isAmountMode ? formatOMR(unitPrice) : unitPrice,
+                    total_price: totalPrice
+                });
+            }
+
+            setItemsList(availableItems.sort((a, b) => a.name.localeCompare(b.name)));
+            setLines(currentLines => {
+                const hasOnlyBlankLine = currentLines.length === 1
+                    && !currentLines[0].itemId
+                    && !currentLines[0].itemName
+                    && !currentLines[0].storeId
+                    && Number(currentLines[0].unit_price || 0) === 0
+                    && Number(currentLines[0].total_price || 0) === 0;
+
+                return hasOnlyBlankLine ? importedLines : [...currentLines, ...importedLines];
+            });
+
+            const intelligenceEntries = await Promise.all(importedLines.map(async line => {
+                const intel = await getItemPriceIntelligence(line.itemId);
+                return [line.id, intel];
+            }));
+            setPriceIntelligence(prev => ({
+                ...prev,
+                ...Object.fromEntries(intelligenceEntries.filter(([, intel]) => Boolean(intel)))
+            }));
+
+            setBulkText("");
+            setBulkMessage(`${importedLines.length} لائنز add ہو گئیں${createdNames.length ? `، ${createdNames.length} نئے items بھی بن گئے` : ""}۔`);
+        } catch (error) {
+            setErrorMsg(error.message || "Paste import complete نہیں ہو سکا۔");
+        } finally {
+            setBulkImporting(false);
+        }
     };
 
     const removeLine = (id) => {
@@ -192,6 +373,7 @@ export default function NewPurchasePage() {
                 <form onSubmit={handleSubmit}>
 
                     {errorMsg && <div className="error-message" style={{ marginBottom: '15px' }}>{errorMsg}</div>}
+                    {bulkMessage && <div className="success-message" style={{ marginBottom: '15px' }}>{bulkMessage}</div>}
 
                     <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '30px' }}>
                         <div className="form-group" style={{ flex: 1, minWidth: '200px' }}>
@@ -201,6 +383,58 @@ export default function NewPurchasePage() {
                         <div className="form-group" style={{ flex: 2, minWidth: '200px' }}>
                             <label className="form-label">نوٹس (اختیاری)</label>
                             <input type="text" className="form-input" placeholder="آج کی خریداری کے حوالے سے کوئی خاص بات..." value={notes} onChange={e => setNotes(e.target.value)} />
+                        </div>
+                    </div>
+
+                    <div style={{ padding: '18px', backgroundColor: '#f0fdf4', borderRadius: '12px', border: '1px solid #bbf7d0', marginBottom: '20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', color: 'var(--text-main)', fontWeight: 800 }}>
+                            <ClipboardPaste size={20} color="var(--primary)" />
+                            <span>روزانہ خریداری list paste</span>
+                        </div>
+
+                        <textarea
+                            className="form-input"
+                            rows={5}
+                            value={bulkText}
+                            onChange={e => {
+                                setBulkText(e.target.value);
+                                setBulkMessage("");
+                            }}
+                            placeholder={`| 1.4 | آلو |\n| 0.5 | بیسن |\n| 1 | پانی بڑا |`}
+                            style={{ direction: 'rtl', resize: 'vertical', minHeight: '120px', marginBottom: '12px' }}
+                        />
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', alignItems: 'end' }}>
+                            <div className="form-group" style={{ margin: 0 }}>
+                                <label className="form-label">پیسٹ موڈ</label>
+                                <select className="form-select" value={bulkMode} onChange={e => setBulkMode(e.target.value)}>
+                                    <option value="amount">رقم (OMR)</option>
+                                    <option value="quantity">مقدار</option>
+                                </select>
+                            </div>
+                            <div className="form-group" style={{ margin: 0 }}>
+                                <label className="form-label">Default Store</label>
+                                <select className="form-select" value={bulkDefaultStoreId} onChange={e => setBulkDefaultStoreId(e.target.value)}>
+                                    <option value="">بعد میں منتخب کریں</option>
+                                    {storesList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                </select>
+                            </div>
+                            <div className="form-group" style={{ margin: 0 }}>
+                                <label className="form-label">نئے item کا unit</label>
+                                <select className="form-select" value={bulkDefaultUnit} onChange={e => setBulkDefaultUnit(e.target.value)} dir="ltr">
+                                    {itemUnits.map(u => <option key={u} value={u}>{u}</option>)}
+                                </select>
+                            </div>
+                            <button
+                                type="button"
+                                className="btn-submit"
+                                onClick={handleBulkImport}
+                                disabled={bulkImporting || !bulkText.trim()}
+                                style={{ margin: 0, width: 'auto', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                            >
+                                <ClipboardPaste size={18} />
+                                {bulkImporting ? "Import ہو رہا ہے..." : "List Import کریں"}
+                            </button>
                         </div>
                     </div>
 
