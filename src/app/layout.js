@@ -1,6 +1,7 @@
 import { Noto_Sans_Arabic, Noto_Nastaliq_Urdu, Inter, Poppins, Roboto } from "next/font/google";
 import "./globals.css";
 import ClientLayout from "./ClientLayout";
+import PwaRuntime from "./PwaRuntime";
 
 const notoSansArabic = Noto_Sans_Arabic({
   subsets: ["arabic"],
@@ -33,14 +34,53 @@ const roboto = Roboto({
 });
 
 export const metadata = {
-  title: "Malik Sajawal Refreshment - Daily Accounting",
-  description: "Daily accounting app - Premium Dashboard",
+  metadataBase: new URL("https://msr-liart.vercel.app"),
+  title: {
+    default: "Malik Sajawal Refreshment Accounting",
+    template: "%s | Malik Sajawal Refreshment Accounting",
+  },
+  description: "Daily sales, purchases, reports, and accounting for Malik Sajawal Refreshment.",
+  applicationName: "MSR Accounting",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "MSR Accounting",
+    statusBarStyle: "default",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
+  openGraph: {
+    title: "Malik Sajawal Refreshment Accounting",
+    description: "Daily sales, purchases, reports, and accounting for Malik Sajawal Refreshment.",
+    url: "https://msr-liart.vercel.app",
+    siteName: "MSR Accounting",
+    type: "website",
+  },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#0f9f7a",
+  colorScheme: "light dark",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="ur" dir="rtl" data-theme="light" suppressHydrationWarning>
       <body className={`${notoSansArabic.variable} ${notoNastaliqUrdu.variable} ${inter.variable} ${poppins.variable} ${roboto.variable}`} suppressHydrationWarning>
+        <PwaRuntime />
         <ClientLayout>
           {children}
         </ClientLayout>

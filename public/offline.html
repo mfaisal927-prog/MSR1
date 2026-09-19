@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0f9f7a" />
+    <title>MSR Accounting Offline</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --primary: #0f9f7a;
+        --text: #17211d;
+        --muted: #64736d;
+        --border: #dce7e2;
+        --surface: #ffffff;
+        --page: #f6f8f7;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: var(--page);
+        color: var(--text);
+        font-family: Arial, "Noto Sans Arabic", sans-serif;
+        padding: 24px;
+      }
+
+      main {
+        width: min(100%, 460px);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        box-shadow: 0 18px 45px rgba(18, 35, 31, 0.08);
+        padding: 28px;
+        text-align: center;
+      }
+
+      .logo {
+        width: 72px;
+        height: 72px;
+        margin: 0 auto 18px;
+        display: grid;
+        place-items: center;
+        border-radius: 8px;
+        background: var(--primary);
+        color: white;
+        font-size: 28px;
+        font-weight: 800;
+      }
+
+      h1 {
+        margin: 0 0 10px;
+        font-size: 28px;
+        line-height: 1.35;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.7;
+      }
+
+      .en {
+        margin-top: 14px;
+        direction: ltr;
+        font-size: 14px;
+      }
+
+      button {
+        margin-top: 22px;
+        width: 100%;
+        min-height: 48px;
+        border: 0;
+        border-radius: 8px;
+        background: var(--primary);
+        color: white;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="logo">MSR</div>
+      <h1>انٹرنیٹ دستیاب نہیں</h1>
+      <p>کنکشن بحال ہونے کے بعد صفحہ دوبارہ کھولیں۔ آپ کا آن لائن ڈیٹا محفوظ رہے گا۔</p>
+      <p class="en">You are offline. Please reconnect and try again.</p>
+      <button type="button" onclick="window.location.reload()">دوبارہ کوشش کریں</button>
+    </main>
+  </body>
+</html>
