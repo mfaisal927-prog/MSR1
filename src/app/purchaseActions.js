@@ -220,12 +220,125 @@ export async function deleteItem(id) {
 }
 
 // --- PURCHASES ---
+function revalidatePurchaseViews() {
+    revalidatePath('/purchases');
+    revalidatePath('/dashboard');
+    revalidatePath('/monthly');
+    revalidatePath('/daily');
+    revalidatePath('/price-compare');
+}
+
+function numberOrZero(value) {
+    const numberValue = Number(value);
+    return Number.isFinite(numberValue) ? numberValue : 0;
+}
+
+function getDailyDateParts(date) {
+    const d = new Date(date);
+    const daysArr = ["اتوار", "پیر", "منگل", "بدھ", "جمعرات", "جمعہ", "ہفتہ"];
+
+    return {
+        month: d.getMonth() + 1,
+        year: d.getFullYear(),
+        dayText: daysArr[d.getDay()]
+    };
+}
+
+function normalizePurchaseLine(line, itemMap) {
+    const itemId = parseInt(line.itemId);
+    const storeId = parseInt(line.storeId);
+    const unit = line.unit || "Kg";
+    const baseUnit = itemMap[itemId] || unit;
+    const quantity = numberOrZero(line.quantity);
+    const unitPrice = numberOrZero(line.unit_price);
+    const totalPrice = numberOrZero(line.total_price) || Number((quantity * unitPrice).toFixed(3));
+
+    let quantityInBaseUnit = quantity;
+    const lineUnit = unit.toLowerCase();
+    const baseUnitLower = (baseUnit || "").toLowerCase();
+
+    if ((lineUnit === 'gram' || lineUnit === 'g') && baseUnitLower === 'kg') {
+        quantityInBaseUnit = quantityInBaseUnit / 1000.0;
+    } else if ((lineUnit === 'ml' || lineUnit === 'milliliter') && baseUnitLower === 'liter') {
+        quantityInBaseUnit = quantityInBaseUnit / 1000.0;
+    }
+
+    const unitPricePerBaseUnit = quantityInBaseUnit > 0 ? (totalPrice / quantityInBaseUnit) : unitPrice;
+
+    return {
+        itemId,
+        storeId,
+        quantity,
+        unit,
+        unit_price: unitPrice,
+        total_price: totalPrice,
+        quantity_in_base_unit: quantityInBaseUnit,
+        unit_price_per_base_unit: unitPricePerBaseUnit,
+        item_image_url: line.item_image_url || null
+    };
+}
+
+async function createPurchaseLines(tx, entryId, lines) {
+    const items = await tx.item.findMany({ select: { id: true, default_unit: true } });
+    const itemMap = Object.fromEntries(items.map(item => [item.id, item.default_unit]));
+
+    for (const line of lines) {
+        await tx.purchaseLine.create({
+            data: {
+                purchaseEntryId: entryId,
+                ...normalizePurchaseLine(line, itemMap)
+            }
+        });
+    }
+}
+
+async function syncDailyPurchaseTotal(tx, date) {
+    if (!date) return;
+
+    const entry = await tx.purchaseEntry.findUnique({
+        where: { date },
+        include: { lines: { select: { total_price: true } } }
+    });
+    const newTotalPurchase = entry?.lines?.reduce((sum, line) => sum + numberOrZero(line.total_price), 0) || 0;
+    const daily = await tx.dailyEntry.findUnique({ where: { date } });
+
+    if (daily) {
+        const updatedProfit = numberOrZero(daily.sale_total) - newTotalPurchase - numberOrZero(daily.expense_total);
+        await tx.dailyEntry.update({
+            where: { id: daily.id },
+            data: {
+                purchase_total: newTotalPurchase,
+                profit_total: updatedProfit
+            }
+        });
+        return;
+    }
+
+    if (newTotalPurchase > 0) {
+        const { month, year, dayText } = getDailyDateParts(date);
+        await tx.dailyEntry.create({
+            data: {
+                date,
+                day_text: dayText,
+                month,
+                year,
+                sale_total: 0,
+                purchase_total: newTotalPurchase,
+                expense_total: 0,
+                profit_total: -newTotalPurchase,
+                extra_expense_total: 0
+            }
+        });
+    }
+}
+
 export async function getPurchaseHistory() {
     try {
         return await prisma.purchaseEntry.findMany({
             include: {
                 lines: {
-                    include: { item: true, store: true }
+                    include: { item: true, store: true },
+                    orderBy: { id: 'asc' }
                 }
             },
             orderBy: { date: 'desc' }
@@ -236,15 +349,61 @@ export async function getPurchaseHistory() {
     }
 }
 
-export async function addPurchaseEntry(date, notes, lines) {
+export async function getPurchaseEntry(id) {
     try {
-        // Calculate total purchase amount for this entry
-        let totalPurchaseAmt = 0;
-        lines.forEach(line => {
-            totalPurchaseAmt += line.total_price;
+        const entry = await prisma.purchaseEntry.findUnique({
+            where: { id: parseInt(id) },
+            include: {
+                lines: {
+                    include: {
+                        item: {
+                            select: {
+                                id: true,
+                                name: true,
+                                category: true,
+                                default_unit: true
+                            }
+                        },
+                        store: {
+                            select: {
+                                id: true,
+                                name: true
+                            }
+                        }
+                    },
+                    orderBy: { id: 'asc' }
+                }
+            }
         });
 
-        // Create the Purchase Entry and Lines within a transaction
+        if (!entry) return null;
+
+        return {
+            id: entry.id,
+            date: entry.date,
+            notes: entry.notes || "",
+            lines: entry.lines.map(line => ({
+                id: line.id,
+                itemId: line.itemId,
+                itemName: line.item?.name || "",
+                storeId: line.storeId,
+                quantity: line.quantity,
+                unit: line.unit,
+                unit_price: line.unit_price,
+                total_price: line.total_price,
+                item_image_url: line.item_image_url || null,
+                item: line.item,
+                store: line.store
+            }))
+        };
+    } catch (e) {
+        console.error(e);
+        return null;
+    }
+}
+
+export async function addPurchaseEntry(date, notes, lines) {
+    try {
         const result = await prisma.$transaction(async (tx) => {
             const entry = await tx.purchaseEntry.upsert({
                 where: { date: date },
@@ -252,100 +411,67 @@ export async function addPurchaseEntry(date, notes, lines) {
                 create: { date: date, notes: notes }
             });
 
-            // Fetch all items to get default units
-            const items = await tx.item.findMany();
-            const itemMap = {};
-            items.forEach(i => itemMap[i.id] = i.default_unit);
-
-            // We need to support adding items to existing day.
-            // Let's just create new lines and link them to the entry.
-            for (let line of lines) {
-                const baseUnit = itemMap[parseInt(line.itemId)] || line.unit;
-                let q_in_base = parseFloat(line.quantity);
-
-                // Normalization rules
-                const lUnit = (line.unit || '').toLowerCase();
-                const bUnit = (baseUnit || '').toLowerCase();
-
-                if ((lUnit === 'gram' || lUnit === 'g') && bUnit === 'kg') {
-                    q_in_base = q_in_base / 1000.0;
-                } else if ((lUnit === 'ml' || lUnit === 'milliliter') && bUnit === 'liter') {
-                    q_in_base = q_in_base / 1000.0;
-                }
-
-                const u_price_base = q_in_base > 0 ? (line.total_price / q_in_base) : line.unit_price;
-
-                await tx.purchaseLine.create({
-                    data: {
-                        purchaseEntryId: entry.id,
-                        itemId: parseInt(line.itemId),
-                        storeId: parseInt(line.storeId),
-                        quantity: parseFloat(line.quantity),
-                        unit: line.unit,
-                        unit_price: parseFloat(line.unit_price),
-                        total_price: parseFloat(line.total_price),
-                        quantity_in_base_unit: q_in_base,
-                        unit_price_per_base_unit: u_price_base,
-                        item_image_url: line.item_image_url || null
-                    }
-                });
-            }
-
-            // Sync with DailyEntry
-            // We need to get all PurchaseLines for this date to get the sum
-            const allEntryLines = await tx.purchaseLine.findMany({
-                where: { purchaseEntryId: entry.id }
-            });
-
-            const newTotalPurchase = allEntryLines.reduce((sum, l) => sum + l.total_price, 0);
-
-            // Get date parts
-            const d = new Date(date);
-            const month = d.getMonth() + 1;
-            const year = d.getFullYear();
-            const daysArr = ["اتوار", "پیر", "منگل", "بدھ", "جمعرات", "جمعہ", "ہفتہ"];
-            const dayText = daysArr[d.getDay()];
-
-            // Find or create DailyEntry
-            const daily = await tx.dailyEntry.findUnique({ where: { date: date } });
-
-            if (daily) {
-                const updatedProfit = daily.sale_total - newTotalPurchase - daily.expense_total;
-                await tx.dailyEntry.update({
-                    where: { id: daily.id },
-                    data: {
-                        purchase_total: newTotalPurchase,
-                        profit_total: updatedProfit
-                    }
-                });
-            } else {
-                await tx.dailyEntry.create({
-                    data: {
-                        date: date,
-                        day_text: dayText,
-                        month: month,
-                        year: year,
-                        sale_total: 0,
-                        purchase_total: newTotalPurchase,
-                        expense_total: 0,
-                        profit_total: -newTotalPurchase,
-                        extra_expense_total: 0
-                    }
-                });
-            }
+            await createPurchaseLines(tx, entry.id, lines);
+            await syncDailyPurchaseTotal(tx, date);
 
             return entry;
         });
 
-        revalidatePath('/purchases');
-        revalidatePath('/dashboard');
-        revalidatePath('/monthly');
-        revalidatePath('/daily');
-        revalidatePath('/price-compare');
+        revalidatePurchaseViews();
         return { success: true, result };
     } catch (e) {
         console.error(e);
         return { success: false, error: e.message || "Failed to add purchase entry" };
+    }
+}
+
+export async function updatePurchaseEntry(id, date, notes, lines) {
+    try {
+        const result = await prisma.$transaction(async (tx) => {
+            const entry = await tx.purchaseEntry.findUnique({
+                where: { id: parseInt(id) },
+                select: { id: true, date: true }
+            });
+
+            if (!entry) {
+                throw new Error("خریداری کا ریکارڈ نہیں ملا۔");
+            }
+
+            if (date !== entry.date) {
+                const dateOwner = await tx.purchaseEntry.findUnique({
+                    where: { date },
+                    select: { id: true }
+                });
+
+                if (dateOwner && dateOwner.id !== entry.id) {
+                    throw new Error("اس تاریخ کی خریداری پہلے سے موجود ہے۔ اسی تاریخ کا ریکارڈ edit کریں یا دوسری تاریخ منتخب کریں۔");
+                }
+            }
+
+            const previousDate = entry.date;
+            const updatedEntry = await tx.purchaseEntry.update({
+                where: { id: entry.id },
+                data: { date, notes }
+            });
+
+            await tx.purchaseLine.deleteMany({
+                where: { purchaseEntryId: entry.id }
+            });
+            await createPurchaseLines(tx, entry.id, lines);
+            await syncDailyPurchaseTotal(tx, date);
+
+            if (previousDate !== date) {
+                await syncDailyPurchaseTotal(tx, previousDate);
+            }
+
+            return updatedEntry;
+        });
+
+        revalidatePurchaseViews();
+        return { success: true, result };
+    } catch (e) {
+        console.error(e);
+        return { success: false, error: e.message || "Failed to update purchase entry" };
     }
 }
 
@@ -366,20 +492,36 @@ function addDays(date, days) {
 }
 
 function emptyPeriod() {
-    return { quantity: 0, amount: 0 };
+    return { quantity: 0, amount: 0, count: 0 };
 }
 
 function addToPeriod(period, quantity, amount) {
     period.quantity += quantity;
     period.amount += amount;
+    period.count += 1;
 }
 
 function roundNumber(value) {
     return Number((value || 0).toFixed(3));
 }
 
+function sanitizeCustomDays(days) {
+    const parsed = parseInt(days, 10);
+    if (!Number.isFinite(parsed)) return 7;
+    return Math.min(365, Math.max(1, parsed));
+}
+
+function serializePeriod(period) {
+    return {
+        quantity: roundNumber(period.quantity),
+        amount: roundNumber(period.amount),
+        count: period.count || 0
+    };
+}
+
 // Item-wise consumption/purchase summary for latest available purchase date.
-export async function getItemUsageSummary() {
+export async function getItemUsageSummary(customDaysInput = 7) {
+    const customDays = sanitizeCustomDays(customDaysInput);
     try {
         const lines = await prisma.purchaseLine.findMany({
             include: {
@@ -393,9 +535,11 @@ export async function getItemUsageSummary() {
         if (validLines.length === 0) {
             return {
                 reportDate: null,
+                customDays,
                 ranges: null,
                 totals: {
                     day: emptyPeriod(),
+                    custom: emptyPeriod(),
                     week: emptyPeriod(),
                     twoWeeks: emptyPeriod(),
                     month: emptyPeriod()
@@ -412,10 +556,12 @@ export async function getItemUsageSummary() {
         const report = parseDateKey(reportDate);
         const weekStart = formatDateKey(addDays(report, -6));
         const twoWeeksStart = formatDateKey(addDays(report, -13));
+        const customStart = formatDateKey(addDays(report, -(customDays - 1)));
         const monthStart = formatDateKey(new Date(Date.UTC(report.getUTCFullYear(), report.getUTCMonth(), 1)));
 
         const ranges = {
             day: { start: reportDate, end: reportDate },
+            custom: { start: customStart, end: reportDate },
             week: { start: weekStart, end: reportDate },
             twoWeeks: { start: twoWeeksStart, end: reportDate },
             month: { start: monthStart, end: reportDate }
@@ -423,6 +569,7 @@ export async function getItemUsageSummary() {
 
         const totals = {
             day: emptyPeriod(),
+            custom: emptyPeriod(),
             week: emptyPeriod(),
             twoWeeks: emptyPeriod(),
             month: emptyPeriod()
@@ -439,6 +586,7 @@ export async function getItemUsageSummary() {
                     unit: line.item?.default_unit || line.unit || "",
                     lastDate: line.entry.date,
                     day: emptyPeriod(),
+                    custom: emptyPeriod(),
                     week: emptyPeriod(),
                     twoWeeks: emptyPeriod(),
                     month: emptyPeriod()
@@ -463,6 +611,11 @@ export async function getItemUsageSummary() {
                 addToPeriod(totals.day, quantity, amount);
             }
 
+            if (date >= customStart) {
+                addToPeriod(item.custom, quantity, amount);
+                addToPeriod(totals.custom, quantity, amount);
+            }
+
             if (date >= weekStart) {
                 addToPeriod(item.week, quantity, amount);
                 addToPeriod(totals.week, quantity, amount);
@@ -482,22 +635,25 @@ export async function getItemUsageSummary() {
         const items = Array.from(byItem.values())
             .map(item => ({
                 ...item,
-                day: { quantity: roundNumber(item.day.quantity), amount: roundNumber(item.day.amount) },
-                week: { quantity: roundNumber(item.week.quantity), amount: roundNumber(item.week.amount) },
-                twoWeeks: { quantity: roundNumber(item.twoWeeks.quantity), amount: roundNumber(item.twoWeeks.amount) },
-                month: { quantity: roundNumber(item.month.quantity), amount: roundNumber(item.month.amount) }
+                day: serializePeriod(item.day),
+                custom: serializePeriod(item.custom),
+                week: serializePeriod(item.week),
+                twoWeeks: serializePeriod(item.twoWeeks),
+                month: serializePeriod(item.month)
             }))
-            .filter(item => item.month.amount > 0 || item.twoWeeks.amount > 0 || item.week.amount > 0 || item.day.amount > 0)
+            .filter(item => item.month.amount > 0 || item.twoWeeks.amount > 0 || item.week.amount > 0 || item.custom.amount > 0 || item.day.amount > 0)
             .sort((a, b) => b.month.amount - a.month.amount || a.name.localeCompare(b.name));
 
         return {
             reportDate,
+            customDays,
             ranges,
             totals: {
-                day: { quantity: roundNumber(totals.day.quantity), amount: roundNumber(totals.day.amount) },
-                week: { quantity: roundNumber(totals.week.quantity), amount: roundNumber(totals.week.amount) },
-                twoWeeks: { quantity: roundNumber(totals.twoWeeks.quantity), amount: roundNumber(totals.twoWeeks.amount) },
-                month: { quantity: roundNumber(totals.month.quantity), amount: roundNumber(totals.month.amount) }
+                day: serializePeriod(totals.day),
+                custom: serializePeriod(totals.custom),
+                week: serializePeriod(totals.week),
+                twoWeeks: serializePeriod(totals.twoWeeks),
+                month: serializePeriod(totals.month)
             },
             items
         };
@@ -505,9 +661,11 @@ export async function getItemUsageSummary() {
         console.error(e);
         return {
             reportDate: null,
+            customDays,
             ranges: null,
             totals: {
                 day: emptyPeriod(),
+                custom: emptyPeriod(),
                 week: emptyPeriod(),
                 twoWeeks: emptyPeriod(),
                 month: emptyPeriod()

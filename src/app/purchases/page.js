@@ -5,9 +5,11 @@ import {
     History,
     Layers3,
     PackageCheck,
+    PencilLine,
     PlusCircle,
     Search,
     ShoppingBag,
+    SlidersHorizontal,
     Store,
     WalletCards
 } from "lucide-react";
@@ -24,10 +26,26 @@ function formatQuantity(value) {
     return Number.isInteger(numberValue) ? numberValue.toString() : numberValue.toFixed(2);
 }
 
-export default async function PurchasesDashboardPage() {
+function sanitizeDays(value) {
+    const parsed = parseInt(value, 10);
+    if (!Number.isFinite(parsed)) return 7;
+    return Math.min(365, Math.max(1, parsed));
+}
+
+function entryTotal(entry) {
+    return entry.lines ? entry.lines.reduce((sum, line) => sum + Number(line.total_price || 0), 0) : 0;
+}
+
+function periodSubtitle(ranges, key) {
+    return ranges ? `${ranges[key].start} تا ${ranges[key].end}` : "کوئی ریکارڈ نہیں";
+}
+
+export default async function PurchasesDashboardPage({ searchParams }) {
+    const resolvedSearchParams = await searchParams;
+    const customDays = sanitizeDays(resolvedSearchParams?.days || 7);
     const [history, usageSummary] = await Promise.all([
         getPurchaseHistory(),
-        getItemUsageSummary()
+        getItemUsageSummary(customDays)
     ]);
 
     const usageCards = [
@@ -39,23 +57,30 @@ export default async function PurchasesDashboardPage() {
             tone: "usage-green"
         },
         {
+            key: "custom",
+            title: `${usageSummary.customDays || customDays} دن`,
+            subtitle: periodSubtitle(usageSummary.ranges, "custom"),
+            icon: SlidersHorizontal,
+            tone: "usage-teal"
+        },
+        {
             key: "week",
             title: "7 دن",
-            subtitle: usageSummary.ranges ? `${usageSummary.ranges.week.start} تا ${usageSummary.ranges.week.end}` : "کوئی ریکارڈ نہیں",
+            subtitle: periodSubtitle(usageSummary.ranges, "week"),
             icon: PackageCheck,
             tone: "usage-blue"
         },
         {
             key: "twoWeeks",
             title: "14 دن",
-            subtitle: usageSummary.ranges ? `${usageSummary.ranges.twoWeeks.start} تا ${usageSummary.ranges.twoWeeks.end}` : "کوئی ریکارڈ نہیں",
+            subtitle: periodSubtitle(usageSummary.ranges, "twoWeeks"),
             icon: Layers3,
             tone: "usage-violet"
         },
         {
             key: "month",
             title: "رواں مہینہ",
-            subtitle: usageSummary.ranges ? `${usageSummary.ranges.month.start} تا ${usageSummary.ranges.month.end}` : "کوئی ریکارڈ نہیں",
+            subtitle: periodSubtitle(usageSummary.ranges, "month"),
             icon: WalletCards,
             tone: "usage-amber"
         }
@@ -97,9 +122,17 @@ export default async function PurchasesDashboardPage() {
                         <h2>سامان کے حساب سے روزانہ، ہفتہ وار اور ماہانہ خرچ</h2>
                         <p>ہر آئٹم کی مقدار اور رقم خودکار طور پر خریداری کے ریکارڈ سے جمع ہوتی رہے گی۔</p>
                     </div>
-                    <Link href="/purchases/new" className="btn-submit purchase-inline-action">
-                        نئی خریداری شامل کریں
-                    </Link>
+                    <div className="purchase-heading-actions">
+                        <form className="usage-days-form" method="get">
+                            <label htmlFor="days">اپنی مدت</label>
+                            <input id="days" name="days" type="number" min="1" max="365" defaultValue={usageSummary.customDays || customDays} />
+                            <span>دن</span>
+                            <button type="submit">دیکھیں</button>
+                        </form>
+                        <Link href="/purchases/new" className="btn-submit purchase-inline-action">
+                            نئی خریداری شامل کریں
+                        </Link>
+                    </div>
                 </div>
 
                 <div className="usage-card-grid">
@@ -128,6 +161,7 @@ export default async function PurchasesDashboardPage() {
                                 <tr>
                                     <th>سامان</th>
                                     <th>تازہ دن</th>
+                                    <th>{usageSummary.customDays || customDays} دن</th>
                                     <th>7 دن</th>
                                     <th>14 دن</th>
                                     <th>مہینہ</th>
@@ -144,11 +178,12 @@ export default async function PurchasesDashboardPage() {
                                                     <span>{item.category || "دیگر"} · {item.unit}</span>
                                                 </div>
                                             </td>
-                                            {["day", "week", "twoWeeks", "month"].map((period) => (
+                                            {["day", "custom", "week", "twoWeeks", "month"].map((period) => (
                                                 <td key={period}>
                                                     <div className="usage-period-cell">
                                                         <strong>{formatAmount(item[period].amount)} OMR</strong>
                                                         <span>{formatQuantity(item[period].quantity)} {item.unit}</span>
+                                                        <small>{item[period].count || 0} دفعہ</small>
                                                     </div>
                                                 </td>
                                             ))}
@@ -157,7 +192,7 @@ export default async function PurchasesDashboardPage() {
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>
+                                        <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>
                                             ابھی تک item-wise خریداری کا ریکارڈ موجود نہیں۔
                                         </td>
                                     </tr>
@@ -166,6 +201,56 @@ export default async function PurchasesDashboardPage() {
                         </table>
                     </div>
                 </div>
+            </section>
+
+            <section className="purchase-days-section animate-slide-up" style={{ animationDelay: '0.18s' }}>
+                <div className="section-heading purchase-section-heading">
+                    <div>
+                        <span className="eyebrow">Date Wise Purchases</span>
+                        <h2>تاریخ کے حساب سے خریداری</h2>
+                        <p>ہر دن کی خریداری الگ box میں نظر آئے گی، اور غلطی ہو تو اسی دن کو edit کیا جا سکے گا۔</p>
+                    </div>
+                </div>
+
+                {history.length > 0 ? (
+                    <div className="purchase-day-grid">
+                        {history.map((entry) => {
+                            const total = entryTotal(entry);
+                            return (
+                                <article key={entry.id} className="purchase-day-card">
+                                    <div className="purchase-day-card-head">
+                                        <div>
+                                            <span style={{ direction: 'ltr' }}>{entry.date}</span>
+                                            <strong>{formatAmount(total)} OMR</strong>
+                                        </div>
+                                        <Link href={`/purchases/${entry.id}/edit`} className="purchase-edit-link">
+                                            <PencilLine size={16} />
+                                            Edit
+                                        </Link>
+                                    </div>
+
+                                    <div className="purchase-day-meta">
+                                        <span>{entry.lines?.length || 0} آئٹمز</span>
+                                        {entry.notes && <span>{entry.notes}</span>}
+                                    </div>
+
+                                    <div className="purchase-day-lines">
+                                        {entry.lines.slice(0, 8).map((line) => (
+                                            <div key={line.id}>
+                                                <span>{line.item?.name || "آئٹم"}</span>
+                                                <b>{formatQuantity(line.quantity)} {line.unit}</b>
+                                                <strong>{formatAmount(line.total_price)} OMR</strong>
+                                            </div>
+                                        ))}
+                                        {entry.lines.length > 8 && <small>+{entry.lines.length - 8} مزید آئٹمز</small>}
+                                    </div>
+                                </article>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="empty-state">ابھی کوئی خریداری محفوظ نہیں۔</div>
+                )}
             </section>
 
             <div className="card animate-slide-up" style={{ animationDelay: '0.2s' }}>
@@ -184,6 +269,7 @@ export default async function PurchasesDashboardPage() {
                                 <th>آئٹمز کی تعداد</th>
                                 <th>کل رقم (OMR)</th>
                                 <th>تفصیلات</th>
+                                <th>درستگی</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -193,7 +279,7 @@ export default async function PurchasesDashboardPage() {
                                         <td style={{ direction: 'ltr', textAlign: 'right' }}>{entry.date}</td>
                                         <td>{entry.lines ? entry.lines.length : 0} آئٹمز</td>
                                         <td style={{ fontWeight: 'bold', color: 'var(--danger)' }}>
-                                            {formatAmount(entry.lines ? entry.lines.reduce((s, line) => s + line.total_price, 0) : 0)}
+                                            {formatAmount(entryTotal(entry))}
                                         </td>
                                         <td>
                                             <div className="purchase-history-lines">
@@ -206,11 +292,17 @@ export default async function PurchasesDashboardPage() {
                                                 {entry.lines.length > 3 && <small>+{entry.lines.length - 3} مزید آئٹمز</small>}
                                             </div>
                                         </td>
+                                        <td>
+                                            <Link href={`/purchases/${entry.id}/edit`} className="purchase-edit-link">
+                                                <PencilLine size={16} />
+                                                Edit
+                                            </Link>
+                                        </td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="4" style={{ textAlign: 'center', padding: '2rem' }}>
+                                    <td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>
                                         کوئی خریداری کا ریکارڈ نہیں ملا۔
                                     </td>
                                 </tr>

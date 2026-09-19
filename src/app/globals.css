@@ -955,6 +955,67 @@ html[dir="rtl"] .action-tile {
   font-size: 0.95rem;
 }
 
+.purchase-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.usage-days-form {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 0.35rem;
+}
+
+.usage-days-form label,
+.usage-days-form span {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.usage-days-form input {
+  width: 76px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-color);
+  color: var(--text-main);
+  direction: ltr;
+  font-family: var(--font-inter), sans-serif;
+  font-weight: 800;
+  padding: 0.48rem 0.55rem;
+  text-align: center;
+}
+
+.usage-days-form button,
+.purchase-edit-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border-radius: var(--radius-sm);
+  font-weight: 800;
+  transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.usage-days-form button {
+  background: var(--primary);
+  color: white;
+  padding: 0.5rem 0.8rem;
+}
+
+.usage-days-form button:hover,
+.purchase-edit-link:hover {
+  transform: translateY(-1px);
+}
+
 .usage-card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
@@ -1034,6 +1095,11 @@ html[dir="rtl"] .action-tile {
   --usage-bg: #fef3c7;
 }
 
+.usage-teal {
+  --usage-color: #0f9f7a;
+  --usage-bg: #ccfbf1;
+}
+
 .purchase-usage-card {
   padding: 0;
   overflow: hidden;
@@ -1077,6 +1143,126 @@ html[dir="rtl"] .action-tile {
   font-size: 0.82rem;
 }
 
+.usage-period-cell small {
+  color: var(--accent);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.purchase-days-section {
+  margin: 0 0 1.5rem;
+}
+
+.purchase-day-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 0.9rem;
+}
+
+.purchase-day-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 1rem;
+}
+
+.purchase-day-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.purchase-day-card-head div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.purchase-day-card-head span {
+  color: var(--text-muted);
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.purchase-day-card-head strong {
+  color: var(--danger);
+  direction: ltr;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 1.25rem;
+}
+
+.purchase-edit-link {
+  background: var(--bg-color);
+  border: 1px solid var(--border);
+  color: var(--accent);
+  direction: ltr;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.82rem;
+  padding: 0.42rem 0.62rem;
+}
+
+.purchase-edit-link:hover {
+  background: var(--bg-positive);
+  color: var(--primary);
+}
+
+.purchase-day-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.purchase-day-meta span {
+  background: var(--bg-color);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.2rem 0.58rem;
+}
+
+.purchase-day-lines {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.purchase-day-lines div {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) auto auto;
+  gap: 0.55rem;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  padding-top: 0.45rem;
+}
+
+.purchase-day-lines span {
+  color: var(--text-main);
+  font-weight: 800;
+}
+
+.purchase-day-lines b {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.purchase-day-lines strong {
+  color: var(--text-main);
+  direction: ltr;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.88rem;
+}
+
+.purchase-day-lines small {
+  color: var(--accent);
+  font-weight: 800;
+}
+
 .purchase-history-lines {
   display: grid;
   gap: 0.32rem;
@@ -1113,6 +1299,10 @@ html[dir="rtl"] .action-tile {
   --usage-bg: rgba(217, 119, 6, 0.18);
 }
 
+[data-theme="dark"] .usage-teal {
+  --usage-bg: rgba(15, 159, 122, 0.18);
+}
+
 @media (max-width: 900px) {
   .dashboard-hero {
     align-items: stretch;
@@ -1132,6 +1322,15 @@ html[dir="rtl"] .action-tile {
 
   .purchase-inline-action {
     width: 100%;
+  }
+
+  .purchase-heading-actions,
+  .usage-days-form {
+    width: 100%;
+  }
+
+  .usage-days-form {
+    justify-content: space-between;
   }
 }
 
