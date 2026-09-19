@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MSR Accounting</string>
+    <string name="title_activity_main">Malik Sajawal Refreshment</string>
+    <string name="package_name">com.maliksajawal.refreshment</string>
+    <string name="custom_url_scheme">com.maliksajawal.refreshment</string>
+</resources>
